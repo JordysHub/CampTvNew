@@ -1,7 +1,7 @@
 from datetime import datetime, date
 
 
-target_groups = ['13+', '20-49', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67',
+target_groups = ['20-49', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67',
                  '25-67AB1', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+',
                  '7-12', 'BDS 25-59', 'BDS 25-67',
                  'BDS KZ12', 'BDS+KND', 'DAG 25-59', 'M 20-49', 'M 25-54', 'M 25-59',
@@ -63,7 +63,8 @@ bereik_dict_radio = {
     '11+ (%)': '_11bereik',
  }
 
-expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland", "tvzeeland", "tvgelderland", "tvoost", "tvdrenthe", "omropfryslantelevisie", "tvnoord", "tvrijmond", "tvwest", "at5",
+expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland", 
+                "tvzeeland", "tvgelderland", "tvoost", "tvdrenthe", "omropfryslantelevisie", "tvnoord", "tvrijmond", "tvwest", "at5",
                 "regio", "orn", "talpa", "adalliance", "total"]
 
 expl_list_radio = ["nporadio1", "nporadio2", "npo3fm", "npoklassiek", "nporadio5", "ster", "ornradio", "total"]

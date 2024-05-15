@@ -2,8 +2,9 @@ import camp_tv_new.src.utils.dictionaries as dict
 import camp_tv_new.src.utils.api_utils as api_utils
 from camp_tv_new.src.utils.logger import setup_logger
 
-from icecream import ic
+import ast
 import pandas as pd
+import numpy as np
 pd.set_option('display.max_columns', None)
 
 logger = setup_logger()
@@ -32,136 +33,88 @@ def get_bereik(index, row, target_group: str, token: str):
 
     df = api_utils.call_bereik_report_tv(target_group, start_date, end_date, token, advertiser, product)
     if df.empty is True:
-        logger.warning(f"Skipping row due to df being empty {index}")
+        logger.warning(f"Skipping row due to df being empty, for flight {flight_id}, advertiser {advertiser}, product {product}, start_date {start_date}, end_date {end_date}")
         return pd.DataFrame()
 
-    df = df.rename(columns={0: 'advertiser', 1: 'product', 2: 'daypart'})
+    df.rename(columns={0: 'advertiser', 1: 'product', 2: 'daypart'}, inplace=True)
     df.insert(0, "flight_id", str(flight_id))
     df.insert(1, "start_date", str(start_date))
     df.insert(2, "end_date", str(end_date))
 
     return df
+def get_new_and_updated_flights(df_bereik, df_all_flights):
+    df_bereik = df_bereik.iloc[:, :5].drop_duplicates(subset=['flight_id'])
+    # get new flights
+    new_flight_ids = df_all_flights[~df_all_flights['flight_id'].isin(df_bereik['flight_id'])]['flight_id'].to_list()
+    # get updated flights
+    merged_df = pd.merge(df_bereik, df_all_flights, on=['flight_id', 'advertiser', 'product'], suffixes=('_old', '_all'))
+    filtered_df = merged_df[merged_df['end_date_all'] != merged_df['end_date_old']]
+    updated_flight_ids = filtered_df['flight_id'].tolist()
 
-def clean_up_bereik_tv(df):
-    # Create columns for dataframe based on input from cells
-    # Find starting index from where R&F starts, migh be different because of the amount of exploitanten
+    combined_flight_ids = new_flight_ids + updated_flight_ids
+    combined_flight_ids = set(combined_flight_ids)
 
-    bereik_start_index = [x[1] for x in df.values[0]].index("1+ (%)")
-    api_grp_list = [f'{x[2].lower().replace(" ", "")}_grp' for x in df.values[0][3:bereik_start_index]]
-    api_bereik_list = [f'{x[2].lower().replace(" ", "")}{dict.bereik_dict_tv[x[1]]}' for x in df.values[0][bereik_start_index:]]
+    return combined_flight_ids
 
-    df.columns = ["advertiser", "product", "daypart"] + api_grp_list + api_bereik_list
-    df.iloc[:, 3:] = df.iloc[:, 3:].apply(lambda x: x.apply(lambda x: float(str(x[-1]).replace(",", ""))), axis=1)
+def fetch_all_data_new_tg(df_all_flights, target_group, file_path):
+    logger.info(f"Fetching all data for new target group {target_group}...")
+    try:
+        df_bereik = get_bereik(df_all_flights, target_group)
+        df_bereik.to_excel(file_path, index=False)
+    except Exception as e:
+        logger.error(f"Error fetching data for new target group {target_group}: {str(e)}")
 
-    # Create empty original dataframe
-    grp_columns = [f"{x}_grp" for x in dict.expl_list_tv]
-    bereik_list = ["_1bereik", "_3bereik", "_6bereik", "_3_5bereik"]
-    bereik_type_columns = [str(x) + str(y) for x in dict.expl_list_tv for y in bereik_list]
-    empty_df = pd.DataFrame(columns=["advertiser", "product", "daypart"] + grp_columns + bereik_type_columns)
+def convert_to_list(string):
+    try:
+        return ast.literal_eval(string)
+    except (ValueError, SyntaxError):
+        return string  # Return as is if not convertible to list
 
-    common_columns = list(set(empty_df.columns) & set(df.columns))
-    merged_df = pd.merge(empty_df, df, how='outer', on=common_columns)
-    merged_df.to_excel("./data/processed/bereik/testtt.xlsx")
+def process_row(row):
+    new_row = row[:6].to_dict()
+    for col_idx, cell in enumerate(row[6:], start=6):
+        if isinstance(cell, float) and np.isnan(cell):
+            continue
+        # Extract information from the list
+        cell = convert_to_list(cell)
+        first_part, second_part, third_part, value = cell
+        # Generate column name based on second value in the list
+        if second_part.endswith(' (%)'):
+            second_part = second_part.split(' ')[0]
+        else:
+            second_part = 'grp'
+        third_part = third_part.strip().replace(" ", "").lower()
+        column_name = f"{third_part}_{second_part.strip().lower()}"
+        # Add the value to the new row
+        new_row[column_name] = float(value)
+    return new_row
 
-    # Fill missing values (NaNs) with zeroes
-    merged_df.fillna(0, inplace=True)
 
-    return merged_df
+def change_column_order(df):
 
+    column_order_first = ['flight_id', 'start_date', 'end_date', 'advertiser', 'product', 'daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
+                          'npo1_grp', 'npo2_grp', 'npo3_grp',
+                          'regiotvutrecht_grp', 'tvnoord-holland_grp', 'l1tv_grp', 'omroepbrabanttv_grp',	'tvflevoland_grp',
+                          'tvzeeland_grp', 'tvgelderland_grp', 'tvoost_grp', 'tvdrenthe_grp', 'omropfryslantelevisie_grp', 'tvnoord_grp', 'tvrijmond_grp', 'tvwest_grp', 'at5_grp',
+                          'npo1_1+', 'npo2_1+', 'npo3_1+',
+                          'npo1_2+', 'npo2_2+', 'npo3_2+',
+                          'npo1_3+', 'npo2_3+', 'npo3_3+',
+                          'npo1_4+', 'npo2_4+', 'npo3_4+',
+                          'npo1_5+', 'npo2_5+', 'npo3_5+',
+                          'npo1_6+', 'npo2_6+', 'npo3_6+',
+                          'npo1_7+', 'npo2_7+', 'npo3_7+',
+                          'npo1_8+', 'npo2_8+', 'npo3_8+',
+                          'npo1_9+', 'npo2_9+', 'npo3_9+',
+                          'npo1_10+', 'npo2_10+', 'npo3_10+',
+                          'ster_1+', 'ster_2+', 'ster_3+', 'ster_4+', 'ster_5+', 'ster_6+', 'ster_7+', 'ster_8+', 'ster_9+', 'ster_10+',
+                          'regio_1+', 'regio_2+', 'regio_3+', 'regio_4+', 'regio_5+', 'regio_6+', 'regio_7+', 'regio_8+', 'regio_9+', 'regio_10+']
 
-def clean_up_bereik_radio(df):
+    column_order_with_total = [col for col in df.columns if 'total' in col and col not in column_order_first]
+    column_order_with_adalliance = [col for col in df.columns if 'adalliance' in col and col not in column_order_first]
+    column_order_with_talpa = [col for col in df.columns if 'talpa' in col and col not in column_order_first]
 
-    bereik_str_map_dict = dict.bereik_dict_radio
+    columns_concat = column_order_first + column_order_with_total + column_order_with_adalliance + column_order_with_talpa
+    desired_column_order = column_order_first + [col for col in df.columns if col not in columns_concat] + \
+        column_order_with_adalliance + column_order_with_talpa + column_order_with_total
 
-    # Create columns for dataframe based on input from cells
-    # Find starting index from where R&F starts, migh be different because of the amount of exploitanten
-    bereik_start_index = [x[1] for x in df.values[0]].index('1+ (%)')
-    count_start_index = [x[1] for x in df.values[0]].index('Count')
-
-    spots_list = [f'{x[2].lower().replace(" ", "")}_spots' for x in df.values[0][3:count_start_index]]
-    grp_list = [f'{x[2].lower().replace(" ", "")}_grp' for x in df.values[0][count_start_index:bereik_start_index]]
-    bereik_list = [f'{x[2].lower().replace(" ", "")}{bereik_str_map_dict[x[1]]}' for x in df.values[0][bereik_start_index:]]
-
-    df.columns = ['advertiser', 'product', 'daypart'] + grp_list + spots_list + bereik_list
-
-    # Change the bereik data from European notation to American
-    df.iloc[:, 3:] = df.iloc[:, 3:].apply(
-        lambda x: x.apply(lambda x: float(str(x[-1]).replace('-', '0,0').replace('.', '').replace(',', '.'))), axis=1)
-
-    # Create all ster_1, ster_3 ... oms, etc. type of empty columns
-    expl_list = ['nporadio1', 'nporadio2', 'npo3fm', 'npoklassiek', 'nporadio5', 'sterradiozenders', 'radio10', 'radio538', 'veronica', 'skyradio', 'slam', '100%nl', 'OMS', 'Qmusic', 'BNRNieuws', 'Total']
-    spots_columns = [f'{x}_spots' for x in expl_list] 
-    grp_columns = [f'{x}_grp' for x in expl_list]  
-    bereik_type_list = [f'{x}bereik' for x in range(1, 12)]
-    bereik_type_columns = [x for x in [[f'{expl}_{bereik_type}' for bereik_type in bereik_type_list] for expl in
-                                       expl_list] for x in x]
-
-    # # Create an empty DataFrame with the desired columns
-    empty_df = pd.DataFrame(columns=['advertiser', 'product', 'daypart'] + grp_columns + spots_columns + bereik_type_columns)
-
-    # # Concatenate the empty DataFrame and the original DataFrame while ignoring index
-    df = pd.concat([empty_df, df], ignore_index=True).fillna(0)
-
-    return df
-
-"""
-def create_grp_bereik_columns(df, medium):
-
-    if medium == "tv":
-        bereik_start_index = [x[1] for x in df.values[0]].index("1+ (%)")
-        grp_list = [f'{x[2].lower().replace(" ", "")}_grp' for x in df.values[0][3:bereik_start_index]]
-        bereik_list = [f'{x[2].lower().replace(" ", "")}{dict.bereik_dict_tv[x[1]]}' for x in df.values[0][bereik_start_index:]]
-        for old, new in dict.bereik_rename_dict_tv.items():
-            grp_list = [x.replace(old, new) for x in grp_list]
-        df.columns = ["advertiser", "product", "daypart"] + grp_list + bereik_list
-
-    if medium == "radio":
-        bereik_start_index = [x[1] for x in df.values[0]].index("1+ (%)")
-        count_start_index = [x[1] for x in df.values[0]].index("Count")
-        grp_list = [f'{x[2].lower().replace(" ", "")}_grp' for x in df.values[0][count_start_index:bereik_start_index]]
-        bereik_list = [f'{x[2].lower().replace(" ", "")}{dict.bereik_dict_radio[x[1]]}' for x in df.values[0][bereik_start_index:]]
-        spots_list = [f'{x[2].lower().replace(" ", "")}_spots' for x in df.values[0][3:count_start_index]]
-        df.columns = ["advertiser", "product", "daypart"] + grp_list + spots_list + bereik_list
-
-    return df
-
-def change_notation_bereik(df, medium):
-    if medium == "tv":
-        df.iloc[:, 3:] = df.iloc[:, 3:].apply(lambda x: x.apply(lambda x: float(str(x[-1]).replace(",", ""))), axis=1)
-    if medium == "radio":
-        df.iloc[:, 3:] = df.iloc[:, 3:].apply(
-            lambda x: x.apply(lambda x: float(str(x[-1]).replace("-", "0,0").replace(".", "").replace(",", "."))), axis=1)
-
-    return df
-
-def create_columns_bereik(df, medium):
-
-    if medium == "tv":
-        # Create all ster_1, ster_3 ... talpa_6, talpa_3-5, etc. type of empty columns
-        grp_columns = [f"{x}_grp" for x in dict.grp_expl_list_tv]
-        bereik_type_list = ["1bereik", "3bereik", "6bereik", "3_5bereik"]
-        bereik_type_columns = [
-            x for x in [[f"{expl}_{bereik_type}" for bereik_type in bereik_type_list] for expl in dict.brk_expl_list_tv]
-            for x in x]
-
-        # Remove bereik columns for channels for competitors, only predicting total of competitor
-        brk_drop_cols = [col for col in df.columns if (col.endswith("bereik")) and (col not in bereik_type_columns)]
-        df = df.drop(brk_drop_cols, axis=1)
-
-        columns = ["advertiser", "product", "daypart"] + grp_columns + bereik_type_columns
-        df = pd.concat([pd.DataFrame(columns=columns), df], ignore_index=True).fillna(0.0)  # creates future warning
-
-    if medium == 'radio':
-        # Create all ster_1, ster_3 ... oms, etc. type of empty columns
-        spots_columns = [f"{x}_spots" for x in dict.brk_expl_list_radio]
-        grp_columns = [f"{x}_grp" for x in dict.brk_expl_list_radio]
-        bereik_type_list = [f"{x}bereik" for x in range(1, 11)]
-        bereik_type_columns = [x for x in [[f"{expl}_{bereik_type}" for bereik_type in bereik_type_list] for expl in dict.brk_expl_list_radio] for x in x]
-
-        # # Create an empty DataFrame with the desired columns
-        columns = pd.DataFrame(columns=["advertiser", "product", "daypart"] + grp_columns + spots_columns + bereik_type_columns)
-        df = pd.concat([pd.DataFrame(columns=columns), df], ignore_index=True).fillna(0)  # creates future warnings
-
-    return df
-
-"""
+    return df[desired_column_order]

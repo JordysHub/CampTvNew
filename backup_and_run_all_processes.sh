@@ -22,3 +22,4 @@ python src/scripts/get_spots_raw.py
 python src/scripts/process_spots.py
 python src/scripts/process_flights.py
 python src/scripts/get_bereik_raw.py
+python src/scripts/process_bereik.py
