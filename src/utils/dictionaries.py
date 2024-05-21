@@ -27,26 +27,11 @@ rename_dict = {
     'W145-75': 'W1 45-75'
 }
 
-# 'HHV': '2532:1',
-# 'AB1': '1996:1-2',
-# 'DAG': '2534:1',
-# 'EHB': '1000105:1',
-# 'B2B': '2092:1',
-# 'W1': '1901:1',
-# '+KND12': '1000045:1-5;1000046:1-5'
-# '+KND17': '1000044:1-5'
 
 queries = {
     "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",
     "spots_lastdate": """SELECT MAX(date) AS last_date FROM [tv_raw].[spots]""",
     "flights": """SELECT * FROM [tv_raw].[flights]""",
-}
-
-bereik_dict_tv = {
-    "1+ (%)": "_1bereik",
-    "3+ (%)": "_3bereik",
-    "6+ (%)": "_6bereik",
-    "3 - 5 (%)": "_3_5bereik",
 }
 
 bereik_dict_radio = {
