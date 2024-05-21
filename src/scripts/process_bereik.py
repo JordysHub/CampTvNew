@@ -12,13 +12,15 @@ def process_directory(directory_path):
     Args:
         directory_path (str): Path to the directory.
     """
-    for root, dirs, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith('.xlsx'):
-                file_path = os.path.join(root, file)
-                parent_folder = os.path.basename(os.path.dirname(file_path))
-                process_file(file_path, parent_folder)
-                print(f"{file} processed")
+    total_files = sum(len(files) for _, _, files in os.walk(directory_path))
+    with tqdm(total=total_files, desc="Processing Files") as pbar_files:
+            for root, dirs, files in os.walk(directory_path):
+                for file in files:
+                    if file.endswith('.xlsx'):
+                        file_path = os.path.join(root, file)
+                        parent_folder = os.path.basename(os.path.dirname(file_path))
+                        process_file(file_path, parent_folder)
+                        pbar_files.update(1)  # Update progress bar for each file processed
 
 def process_file(file_path, parent_folder):
     """

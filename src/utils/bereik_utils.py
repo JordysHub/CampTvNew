@@ -42,6 +42,7 @@ def get_bereik(index, row, target_group: str, token: str):
     df.insert(2, "end_date", str(end_date))
 
     return df
+
 def get_new_and_updated_flights(df_bereik, df_all_flights):
     df_bereik = df_bereik.iloc[:, :5].drop_duplicates(subset=['flight_id'])
     # get new flights
