@@ -19,7 +19,5 @@ cp -r "$SOURCE_DIR_FLIGHTS" "$DEST_DIR/flights_backup_$TIMESTAMP"
 
 # Run your main script to fetch new data
 python src/scripts/get_spots_raw.py
-python src/scripts/process_spots.py
-python src/scripts/process_flights.py
-python src/scripts/get_bereik_raw.py
-python src/scripts/process_bereik.py
+python src/scripts/process_spots_and_flights.py
+python src/scripts/get_bereik.py
