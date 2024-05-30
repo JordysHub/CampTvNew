@@ -117,5 +117,11 @@ def change_column_order(df):
     columns_concat = column_order_first + column_order_with_total + column_order_with_adalliance + column_order_with_talpa
     desired_column_order = column_order_first + [col for col in df.columns if col not in columns_concat] + \
         column_order_with_adalliance + column_order_with_talpa + column_order_with_total
+        
+    # Identify missing columns and add them with a default value of 0
+    for col in desired_column_order:
+        if col not in df.columns:
+            df[col] = 0
 
+    # Reorder the DataFrame
     return df[desired_column_order]

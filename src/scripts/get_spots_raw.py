@@ -17,10 +17,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 logger = setup_logger()
-raw_spots_folder = "data/raw/api/spots/"
 
-
-def parse_arguments():
+def parse_arguments(raw_spots_folder):
     """
     Parse command line arguments and return the parsed arguments.
     """
@@ -41,11 +39,11 @@ def parse_arguments():
     return parser.parse_args()
 
 @timer_func
-def get_spots(start_date: str, end_date: str) -> pd.DataFrame:
+def get_spots(start_date: str, end_date: str, raw_spots_folder: str) -> pd.DataFrame:
     """
     """
-    last_raw_spot_data = api_utils.get_last_known_date_offline(raw_spots_folder)[0].date()
-    logger.info(f"Last raw spot data: {last_raw_spot_data}")
+    last_raw_spot_date = api_utils.get_last_known_date_offline(raw_spots_folder)[0].date()
+    logger.info(f"Last raw spot data: {last_raw_spot_date}")
     logger.info(f"Retrieving Spots from start date: {start_date} to end date: {end_date}")
     start_date = datetime.strptime(start_date, "%d%m%y")
     end_date = datetime.strptime(end_date, "%d%m%y")
@@ -72,18 +70,20 @@ def get_spots(start_date: str, end_date: str) -> pd.DataFrame:
         day_int = day_str[0:2]
         month_int = day_str[2:4]
         year_int = '20' + day_str[4:6]
-        directory = f"./data/raw/api/spots/{year_int}/{month_int}/"
+        directory = f"{raw_spots_folder}{year_int}/{month_int}/"
         if not os.path.exists(directory):
             os.makedirs(directory)
-        df.to_excel(f"./data/raw/api/spots/{year_int}/{month_int}/{day_int}.xlsx", index=False)
+        df.to_excel(f"{raw_spots_folder}{year_int}/{month_int}/{day_int}.xlsx", index=False)
         logger.debug("Fetched data for {} from Spots TV API".format(day.strftime("%d-%m-%Y")))
 
 def main():
     """
     Main function to process data based on command line arguments.
     """
-    args = parse_arguments()
-    get_spots(args.start_date, args.end_date)
+    raw_spots_folder = "data/raw/api/spots/"
+
+    args = parse_arguments(raw_spots_folder)
+    get_spots(args.start_date, args.end_date, raw_spots_folder)
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 from datetime import datetime, date
 
 
-target_groups = ['20-49', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67',
+target_groups = ['B2B', '20-49', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67',
                  '25-67AB1', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+',
                  '7-12', 'BDS 25-59', 'BDS 25-67',
                  'BDS KZ12', 'BDS+KND', 'DAG 25-59', 'M 20-49', 'M 25-54', 'M 25-59',
@@ -27,26 +27,12 @@ rename_dict = {
     'W145-75': 'W1 45-75'
 }
 
-
 queries = {
     "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",
     "spots_lastdate": """SELECT MAX(date) AS last_date FROM [tv_raw].[spots]""",
     "flights": """SELECT * FROM [tv_raw].[flights]""",
 }
 
-bereik_dict_radio = {
-    '1+ (%)': '_1bereik',
-    '2+ (%)': '_2bereik',
-    '3+ (%)': '_3bereik',
-    '4+ (%)': '_4bereik',
-    '5+ (%)': '_5bereik',
-    '6+ (%)': '_6bereik',
-    '7+ (%)': '_7bereik',
-    '8+ (%)': '_8bereik',
-    '9+ (%)': '_9bereik',
-    '10+ (%)': '_10bereik',
-    '11+ (%)': '_11bereik',
- }
 
 expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland", 
                 "tvzeeland", "tvgelderland", "tvoost", "tvdrenthe", "omropfryslantelevisie", "tvnoord", "tvrijmond", "tvwest", "at5",

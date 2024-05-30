@@ -7,6 +7,5 @@ setup(
     install_requires=[
         'numpy>=1.19.0',
         'pandas>=1.3.0',
-        # Add other dependencies here
     ],
 )

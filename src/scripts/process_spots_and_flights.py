@@ -2,9 +2,10 @@ from datetime import datetime
 import pandas as pd
 import os
 import camp_tv_new.src.utils.preprocess_spots as prep_spots
+import camp_tv_new.src.utils.flights_utils as fu
 
 from dotenv import load_dotenv
-from utils.logger import setup_logger
+from utils.logger import setup_logger, timer_func
 from camp_tv_new.src.utils import api_utils
 
 load_dotenv()
@@ -69,13 +70,33 @@ def update_all_spots(all_spots_path, processed_folder_path):
             df_spots.to_excel(all_spots_path, index=False)
     else: 
         logger.debug('Fetched and concatenated all spots')
+@timer_func
+def create_flights_from_spots(df_spots: pd.DataFrame, all_flights_path: str):
+    """
+    Create flights from spots dataframe.
+    
+    Args:
+        df_spots (pd.DataFrame): Spots dataframe.
+        all_flights_path (str): Path to the output flights excel file.
+    """
+    # Segment campaigns by new start date
+    df_new_flights = fu.flights_segment_campaigns_by_new_start(df_spots)
+    # Determine start and end campaign dates
+    df_new_flights = fu.get_start_end_campaign_date(df_new_flights)
+    # Split campaigns that are longer than two months
+    df_new_flights = fu.split_campaigns(df_new_flights)
+    # Create unique flight_id
+    df_new_flights['flight_id'] = df_new_flights.apply(fu.generate_uuid_from_columns, axis=1)
+    # Write flights to excel file
+    df_new_flights.to_excel(all_flights_path, index=False)
 
 def main():
 
     # Define folder paths
-    raw_spots_folder = "./data/raw/api/spots/"
-    processed_spots_folder = "./data/processed/spots/"
-    all_spots_path = "./data/interim/spots/all_spots.xlsx"
+    raw_spots_folder = os.getenv("raw_spots_folder")
+    processed_spots_folder = os.getenv("processed_spots_folder")
+    all_spots_path = os.getenv("all_spots_path")
+    all_flights_path = os.getenv("all_flights_path")
 
     # Process raw spots
     process_raw_spots(raw_spots_folder, processed_spots_folder)
@@ -85,6 +106,10 @@ def main():
     update_all_spots(all_spots_path, processed_spots_folder)
     df = pd.read_excel(all_spots_path)
     logger.info(f"Updated all_spots file. First and last date in spots file: {df['date'].min().date()} - {df['date'].max().date()}")
+
+    # create flights from all spots
+    df_spots = pd.read_excel(all_spots_path)
+    create_flights_from_spots(df_spots, all_flights_path)
 
 if __name__ == "__main__":
     main()

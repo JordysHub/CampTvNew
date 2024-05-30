@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import hashlib
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     # preprocessing
@@ -98,24 +98,6 @@ def split_campaign(campaign):
 
     return pd.DataFrame(sub_campaigns)
 
-# def combine_flights_df(df1, df2):
-
-#     # Convert dates to datetime objects
-#     df1['start_date'] = pd.to_datetime(df1['start_date'])
-#     df1['end_date'] = pd.to_datetime(df1['end_date'])
-#     df2['start_date'] = pd.to_datetime(df2['start_date'])
-#     df2['end_date'] = pd.to_datetime(df2['end_date'])
-#     # Merge dataframes based on advertiser and product
-#     merged_df = pd.merge(df1, df2, on=['advertiser', 'product'], how='left', suffixes=('_first', '_second'))
-#     # Calculate time difference between end_date of df1 and start_date of df2
-#     merged_df['time_diff'] = merged_df['start_date_second'] - merged_df['end_date_first']
-#     # Check if the time difference is within 8 days
-#     merged_df['same_campaign'] = merged_df['time_diff'].apply(lambda x: abs(x.days) <= 8)
-#     # Assign campaign_id from the first dataframe to the second dataframe
-#     merged_df.loc[merged_df['same_campaign'], 'campaign_id_second'] = merged_df['campaign_id_first']
-#     # Drop unnecessary columns
-#     merged_df.drop(['start_date_first', 'end_date_first', 'start_date_second', 'end_date_second', 'time_diff'], axis=1, inplace=True)
-
 
 def generate_uuid_from_columns(row):
     """
@@ -154,18 +136,3 @@ def update_flights(df_flights_old, df_flights_new):
     df_flights_new_unique = df_flights_new[df_flights_new['flight_id'].isin(new_flight_ids)]
 
     return df_flights_updated, df_flights_new_unique
-
-
-"""
-def process_flights_for_sql(df: pd.DataFrame) -> pd.DataFrame:
-    df["flight_id"] = df.apply(lambda x: create_unique_hash_id(x["advertiser"], x["product"], x["start_date"], x["end_date"]), axis=1)
-    # Reshape so it can be send to SQL
-    df = df.loc[:, ["flight_id", "advertiser", "product", "start_date", "end_date"]]
-
-    # Change dates to string, 'cause SQL has trouble with datetime
-    df["start_date"] = df["start_date"].dt.strftime("%d-%m-%Y")
-    df["end_date"] = df["end_date"].dt.strftime("%d-%m-%Y")
-
-    return df
-
-"""
