@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import pandas as pd
 import warnings
 import os
+import numpy as np
+
 
 pd.set_option('future.no_silent_downcasting', True)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
@@ -28,6 +30,12 @@ def create_flights_from_spots(df_spots: pd.DataFrame) -> pd.DataFrame:
     df_new_flights = fu.get_start_end_campaign_date(df_new_flights)
     # split flights that are longer than two months 
     df_new_flights = fu.split_campaigns(df_new_flights)
+
+    # prepare and make mock flights
+    df_new_flights = fu.calculate_date_possibilities_for_mock(df_new_flights)
+    df_mock_flights = fu.create_mock_flights(df_new_flights)
+    df_new_flights = fu.fill_up_original_flights_with_mock(df_new_flights, df_mock_flights) 
+    
     # create unique flight_id
     df_new_flights['flight_id'] = df_new_flights.apply(fu.generate_uuid_from_columns, axis=1)
     df_new_flights.to_excel("./data/interim/flights/all_flights.xlsx", index=False)
