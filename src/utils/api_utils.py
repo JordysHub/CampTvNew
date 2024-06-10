@@ -33,43 +33,43 @@ def valid_date(s):
         raise argparse.ArgumentTypeError(msg)
 
 
-def get_last_known_date_offline(root_folder) -> date:
-    """
-    Retrieve the last known date from local files
-    """
-    try:
-        latest_year = max(os.listdir(root_folder))
-        latest_month = max(os.listdir(os.path.join(root_folder, latest_year)))
-        month_folder = os.path.join(root_folder, latest_year, latest_month)
+# def get_last_known_date_offline(root_folder) -> date:
+#     """
+#     Retrieve the last known date from local files
+#     """
+#     try:
+#         latest_year = max(os.listdir(root_folder))
+#         latest_month = max(os.listdir(os.path.join(root_folder, latest_year)))
+#         month_folder = os.path.join(root_folder, latest_year, latest_month)
 
-        latest_file = None
-        latest_date = None
+#         latest_file = None
+#         latest_date = None
 
-        for file_name in os.listdir(month_folder):
-            if file_name.endswith('.xlsx'):
-                file_path = os.path.join(month_folder, file_name)
-                file_date = os.path.getmtime(file_path)
-                if latest_date is None or file_date > latest_date:
-                    latest_date = file_date
-                    latest_file = file_name
+#         for file_name in os.listdir(month_folder):
+#             if file_name.endswith('.xlsx'):
+#                 file_path = os.path.join(month_folder, file_name)
+#                 file_date = os.path.getmtime(file_path)
+#                 if latest_date is None or file_date > latest_date:
+#                     latest_date = file_date
+#                     latest_file = file_name
 
-        full_path = os.path.join(root_folder, latest_year, latest_month, os.path.splitext(latest_file)[0])
-        folder_path = full_path.replace('\\', '/')
-        parts = folder_path.split('/')
+#         full_path = os.path.join(root_folder, latest_year, latest_month, os.path.splitext(latest_file)[0])
+#         folder_path = full_path.replace('\\', '/')
+#         parts = folder_path.split('/')
 
-        year = parts[-3]
-        month = parts[-2]
-        day = parts[-1]
+#         year = parts[-3]
+#         month = parts[-2]
+#         day = parts[-1]
 
-        date_str = f"{day}{month}{year}"
-        date = datetime.strptime(date_str, '%d%m%Y')
+#         date_str = f"{day}{month}{year}"
+#         date = datetime.strptime(date_str, '%d%m%Y')
 
-    # return the default date if no files are found, so it will fetch from 01-09-23 and onwards
-    except:
-        default_date = datetime(2023, 8, 31)
-        return default_date, ""
+#     # return the default date if no files are found, so it will fetch from 01-09-23 and onwards
+#     except:
+#         default_date = datetime(2023, 8, 31)
+#         return default_date, ""
 
-    return date, folder_path + '.xlsx'
+#     return date, folder_path + '.xlsx'
 
 def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
     """

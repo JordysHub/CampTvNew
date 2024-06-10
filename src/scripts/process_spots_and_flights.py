@@ -3,27 +3,29 @@ import pandas as pd
 import os
 import camp_tv_new.src.utils.preprocess_spots as prep_spots
 import camp_tv_new.src.utils.flights_utils as fu
+import camp_tv_new.src.utils.date_utils as date_utils
+import camp_tv_new.src.utils.api_utils as api_utils
 
 from dotenv import load_dotenv
 from utils.logger import setup_logger, timer_func
-from camp_tv_new.src.utils import api_utils
+import json
 
 load_dotenv()
 logger = setup_logger()
 
-def fetch_latest_date(folder_path):
-    return api_utils.get_last_known_date_offline(folder_path)[0]
+def process_raw_spots(raw_spots_folder, processed_spots_folder):
+    existing_raw_spots_dates = date_utils.get_existing_dates_in_folder(raw_spots_folder)
+    existing_processed_spots_dates = date_utils.get_existing_dates_in_folder(processed_spots_folder)
 
-def process_raw_spots(raw_folder_path, processed_folder_path):
-    latest_raw_date = fetch_latest_date(raw_folder_path)
-    latest_processed_date = fetch_latest_date(processed_folder_path)
+    # Determine missing dates
+    missing_dates = [date for date in existing_raw_spots_dates if date not in existing_processed_spots_dates and date.month != 8]
 
-    if latest_processed_date < latest_raw_date:
-        date_range = pd.date_range(start=latest_processed_date + pd.DateOffset(days=1), end=latest_raw_date)
-        for datum in date_range:
-            raw_file_path = os.path.join(raw_folder_path, datum.strftime('%Y/%m/%d') + '.xlsx')
-            processed_file_path = os.path.join(processed_folder_path, datum.strftime('%Y/%m/%d') + '.xlsx')
-            processed_root_folder = os.path.join(processed_folder_path, datum.strftime('%Y/%m/'))
+    if missing_dates:
+        logger.info(f'Fetching spots from {min(missing_dates).date()} to {max(missing_dates).date()}')
+        for datum in missing_dates:
+            raw_file_path = os.path.join(raw_spots_folder, datum.strftime('%Y/%m/%d') + '.xlsx')
+            processed_file_path = os.path.join(processed_spots_folder, datum.strftime('%Y/%m/%d') + '.xlsx')
+            processed_root_folder = os.path.join(processed_spots_folder, datum.strftime('%Y/%m/'))
 
             if not os.path.exists(processed_root_folder):
                 os.makedirs(processed_root_folder)
@@ -44,32 +46,57 @@ def process_raw_spots(raw_folder_path, processed_folder_path):
     else:
         logger.debug('Processed all daily spots')
 
-def update_all_spots(all_spots_path, processed_folder_path):
-    try:
-        all_spots_df = pd.read_excel(all_spots_path, parse_dates=["date"])
-        latest_spots_date = all_spots_df['date'].max()
-    except FileNotFoundError:
-        latest_spots_date = datetime(2023, 8, 31)
-    dfs = []
+def update_all_spots_file(all_spots_path, processed_spots_folder):
+    all_spots_file_dates = date_utils.get_existing_dates_in_all_spots(all_spots_path)
+    existing_processed_spots_dates = date_utils.get_existing_dates_in_folder(processed_spots_folder)
+    
+    # Get all dates from the start of the existing spots dates to the latest processed date
+    if all_spots_file_dates:
+        missing_dates = [date for date in existing_processed_spots_dates if date not in all_spots_file_dates and date.month != 8]
+    else:
+        missing_dates = existing_processed_spots_dates
 
-    latest_processed_date = fetch_latest_date(processed_folder_path)
-    if latest_spots_date < latest_processed_date:
-        date_range = pd.date_range(start=latest_spots_date + pd.DateOffset(days=1), end=latest_processed_date)
-        logger.debug(f'Processing spots from {min(date_range).date()} to {max(date_range).date()}')
-        for datum in date_range:
-            processed_file_path = os.path.join(processed_folder_path, datum.strftime('%Y/%m/%d') + '.xlsx')
-            df = pd.read_excel(processed_file_path)[["advertiser", "product", "date"]].drop_duplicates()
+    if missing_dates:
+        logger.info(f'Processing spots from {min(missing_dates).date()} to {max(missing_dates).date()}')
+        dfs = []
+        filtered_dict = {}
+        
+        for datum in missing_dates:
+            processed_file_path = os.path.join(processed_spots_folder, datum.strftime('%Y/%m/%d') + '.xlsx')
+            df = pd.read_excel(processed_file_path)[["advertiser", "product", "date", "hour"]]
             dfs.append(df)
 
-        df_spots = pd.concat(dfs)
-        df_spots['date'] = pd.to_datetime(df_spots['date']).dt.date
+        new_df = pd.concat(dfs)
+        new_df['hour'] = new_df['hour'].str.replace('24:00:00', '00:00:00').str.replace('25:00:00', '01:00:00')
+        new_df['hour'] = pd.to_datetime(new_df['hour'], format='%H:%M:%S')
+        
+        # Count spots per day for each advertiser
+        spot_counts = new_df.groupby(['advertiser', 'product', 'date']).size().reset_index(name='spot_count')
+        df_spots = new_df.merge(spot_counts, on=['advertiser', 'product', 'date'])
+        df_spots = df_spots[['advertiser', 'product', 'date', 'spot_count']].drop_duplicates()
+        
+        # Determine alcohol and kansspelen
+        grouped_df = new_df.groupby(['advertiser', 'product'])
+        filtered_groups = grouped_df.filter(lambda x: all((x['hour'].dt.hour >= 21) | (x['hour'].dt.hour <= 2)))
+        filtered_pairs = set(filtered_groups[['advertiser', 'product']].apply(tuple, axis=1))
+
+        for advertiser, product in filtered_pairs:
+            if advertiser not in filtered_dict:
+                filtered_dict[advertiser] = set()
+            filtered_dict[advertiser].add(product)
+            
+        filtered_dict_serializable = {k: list(v) for k, v in filtered_dict.items()}
+        logger.info(f'Filtered dictionary: {json.dumps(filtered_dict_serializable, indent=2)}')
+                
         try:
             all_spots_df = pd.concat([all_spots_df, df_spots])
             all_spots_df.to_excel(all_spots_path, index=False)
         except UnboundLocalError: 
-            df_spots.to_excel(all_spots_path, index=False)
+            df_spots.to_excel(all_spots_path, index=False)           
+            
     else: 
         logger.debug('Fetched and concatenated all spots')
+        
 @timer_func
 def create_flights_from_spots(df_spots: pd.DataFrame, all_flights_path: str):
     """
@@ -85,10 +112,22 @@ def create_flights_from_spots(df_spots: pd.DataFrame, all_flights_path: str):
     df_new_flights = fu.get_start_end_campaign_date(df_new_flights)
     # Split campaigns that are longer than two months
     df_new_flights = fu.split_campaigns(df_new_flights)
+    
+    # Prepare and make mock flights
+    df_new_flights = fu.calculate_date_possibilities_for_mock(df_new_flights)
+    df_mock_flights = fu.create_mock_flights(df_new_flights)
+    df_new_flights = fu.fill_up_original_flights_with_mock(df_new_flights, df_mock_flights) 
+
+    df_new_flights.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
+    # Change date format to DDMMYY (easier to use for api)
+    df_new_flights['start_date'] = pd.to_datetime(df_new_flights['start_date']).dt.strftime("%d%m%y")
+    df_new_flights['end_date'] = pd.to_datetime(df_new_flights['end_date']).dt.strftime("%d%m%y")
     # Create unique flight_id
     df_new_flights['flight_id'] = df_new_flights.apply(fu.generate_uuid_from_columns, axis=1)
-    # Write flights to excel file
-    df_new_flights.to_excel(all_flights_path, index=False)
+    df_new_flights = df_new_flights[['flight_id', 'advertiser', 'product', 'start_date', 'end_date', 'campaign_duration', 'mock_flight']]
+    df_new_flights.to_excel("./data/interim/flights/all_flights.xlsx", index=False)
+
+    return df_new_flights
 
 def main():
 
@@ -97,18 +136,15 @@ def main():
     processed_spots_folder = os.getenv("processed_spots_folder")
     all_spots_path = os.getenv("all_spots_path")
     all_flights_path = os.getenv("all_flights_path")
-
+    
     # Process raw spots
     process_raw_spots(raw_spots_folder, processed_spots_folder)
-    last_raw_spot_data = api_utils.get_last_known_date_offline(raw_spots_folder)[0].date()
-    logger.info(f"Processed new fetched spots. Last raw spot data: {last_raw_spot_data}")
     # Update all spots
-    update_all_spots(all_spots_path, processed_spots_folder)
-    df = pd.read_excel(all_spots_path)
-    logger.info(f"Updated all_spots file. First and last date in spots file: {df['date'].min().date()} - {df['date'].max().date()}")
-
-    # create flights from all spots
+    update_all_spots_file(all_spots_path, processed_spots_folder)
     df_spots = pd.read_excel(all_spots_path)
+    logger.info(f"Updated all_spots file. First and last date in spots file: {df_spots['date'].min().date()} - {df_spots['date'].max().date()}")
+
+    # Create flights from all spots
     create_flights_from_spots(df_spots, all_flights_path)
 
 if __name__ == "__main__":

@@ -53,10 +53,8 @@ def split_campaigns(df_flights):
     df_flights = df_flights.drop(long_campaigns.index)
     df_flights = pd.concat([df_flights, new_campaigns], ignore_index=True)
     df_flights = df_flights[df_flights['campaign_duration'] != 0]
-
-    df_flights['start_date'] = pd.to_datetime(df_flights['start_date']).dt.strftime("%d%m%y")
-    df_flights['end_date'] = pd.to_datetime(df_flights['end_date']).dt.strftime("%d%m%y")
-    df_flights.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
+    
+    df_flights['mock_flight'] = False
 
     return df_flights
 
@@ -109,7 +107,7 @@ def generate_uuid_from_columns(row):
     """
     # Concatenate values of the specified columns into a single string
     # Combination of advertiser, product, and start_date; no 'end-date' because the campaign can still run
-    concatenated_string = ''.join(str(row[col]) for col in ['advertiser', 'product', 'start_date']).lower().replace(" ", "")
+    concatenated_string = ''.join(str(row[col]) for col in ['advertiser', 'product', 'start_date', 'mock_flight']).lower().replace(" ", "")
 
     # Hash the concatenated string using sha256
     hashed_value = hashlib.sha256(concatenated_string.encode()).digest()
@@ -136,3 +134,93 @@ def update_flights(df_flights_old, df_flights_new):
     df_flights_new_unique = df_flights_new[df_flights_new['flight_id'].isin(new_flight_ids)]
 
     return df_flights_updated, df_flights_new_unique
+
+############ MOCK FLIGHTS ################
+
+def calculate_date_possibilities_for_mock(df_flights):
+
+    # Get the difference between start and end date
+    df_flights['difference'] = abs(df_flights['end_date'] - df_flights['start_date'])
+    df_flights['difference'] = df_flights['difference'].apply(lambda x: x.days).astype(int)
+
+    # Check how many full X weeks fit into start and end date
+    for days_int in [x*7 for x in range(1,10)]:
+        df_flights[f'{days_int}days'] = (df_flights['difference'] / days_int)
+        df_flights[f'{days_int}days'] = np.where(df_flights[f'{days_int}days'] == 1.0*(days_int / 7), 0, df_flights[f'{days_int}days']).astype(int)
+        
+    return df_flights
+
+def create_single_mock_flight(flight_series, days_divider, df_mock_flights):
+    
+    jump_int = int(days_divider.replace('days', '')) # Create int to jump date
+    dfs_to_concat = []  # Create a list to store DataFrames
+
+    
+    # Loop through the amount of full days available in a campaign and create a mock campaign
+    # eg. If in the period range it's possible to fit 3 times 7 days, it creates new campaigns
+    # that start 7 days apart and last 7 days
+    for x in range(0, flight_series[days_divider]):
+        df_new_flight = pd.DataFrame({
+            'advertiser': [flight_series['advertiser']],
+            'product': [flight_series['product']],
+            'start_date': [flight_series['start_date'] + timedelta(days= x * jump_int)],
+            'end_date': [flight_series['start_date'] + timedelta(days= (x+1) * jump_int)]   
+            })
+        dfs_to_concat.append(df_new_flight)
+    
+    df_mock_flights = pd.concat([df_mock_flights] + dfs_to_concat, ignore_index=True)
+        
+    return df_mock_flights
+
+def create_mock_flights(df_flights):
+
+    df_mock_flights = pd.DataFrame()
+
+    for row in df_flights.iterrows():
+        for days_divider in [f'{x}days' for x in [x*7 for x in range(1,10)]]:
+            if row[1][days_divider] > 0:
+                df_mock_flights = create_single_mock_flight(row[1], days_divider, df_mock_flights)
+                df_mock_flights = df_mock_flights.reset_index(drop=True)
+                
+    df_mock_flights['mock_flight'] = True
+                
+    return df_mock_flights
+
+def fill_up_original_flights_with_mock(df_original_flights, df_mock_flights):
+    
+    # Check count of all campaigns dividable by weeks
+    df_original_counts = df_original_flights['difference'].value_counts().to_frame()
+    df_original_counts = df_original_counts.loc[[x*7 for x in range(1,8)]].reset_index()
+    df_original_counts = df_original_counts.rename(columns={'difference': 'days', 'count':'difference'})
+    
+    # Get amount of days mock campaigns last
+    df_mock_flights['difference'] = (df_mock_flights['end_date'] -  df_mock_flights['start_date']).apply(lambda x: x.days)
+    
+    # Fill up all campaigns dividable by weeks to 5000, so there'll be 5000 campaigns that went on for 7 days, 5000 campaigns
+    # that went on for 14 days, etc. etc.
+    for row in df_original_counts.iterrows():
+        days_int = row[1]['days']
+        add_amount = 5000 - row[1]['difference']
+        if add_amount > df_mock_flights[df_mock_flights['difference'] == days_int].shape[0]:
+            df_original_flights = pd.concat([df_original_flights, df_mock_flights[df_mock_flights['difference'] == days_int]], ignore_index=True)
+        else:
+            df_original_flights = pd.concat([df_original_flights, df_mock_flights[df_mock_flights['difference'] == days_int].sample(n=add_amount)])
+            
+    df_original_flights['campaign_duration'] = (df_original_flights['end_date'] - df_original_flights['start_date']).dt.days + 1
+
+    return df_original_flights
+
+
+"""
+def process_flights_for_sql(df: pd.DataFrame) -> pd.DataFrame:
+    df["flight_id"] = df.apply(lambda x: create_unique_hash_id(x["advertiser"], x["product"], x["start_date"], x["end_date"]), axis=1)
+    # Reshape so it can be send to SQL
+    df = df.loc[:, ["flight_id", "advertiser", "product", "start_date", "end_date"]]
+
+    # Change dates to string, 'cause SQL has trouble with datetime
+    df["start_date"] = df["start_date"].dt.strftime("%d-%m-%Y")
+    df["end_date"] = df["end_date"].dt.strftime("%d-%m-%Y")
+
+    return df
+
+"""
