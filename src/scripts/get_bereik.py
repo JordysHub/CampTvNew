@@ -58,7 +58,9 @@ def process_target_group(target_group: str, df_all_flights: pd.DataFrame) -> Non
         logger.info(f"Fetching all data for new target group {target_group}...")
         try:
             df_bereik = get_bereik(df_all_flights, target_group)
-            df_bereik.to_excel(file_path, index=False)
+            df_bereik.to_excel(file_path, index=False)  
+            return     
+        
         except Exception as e:
             logger.error(f"Error fetching data for new target group {target_group}: {str(e)}")
 
@@ -73,11 +75,23 @@ def process_target_group(target_group: str, df_all_flights: pd.DataFrame) -> Non
     df_bereik_new = get_bereik(df_flights_to_get, target_group)
 
     df_combined = pd.concat([df_old_filtered, df_bereik_new], ignore_index=True)
-    assert set(df_combined['flight_id']) == set(df_all_flights['flight_id'])
+    
+    try:
+        assert set(df_combined['flight_id']) == set(df_all_flights['flight_id'])
+    except AssertionError:
+        print("Warning: The flight_id sets do not match.")
+        combined_set = set(df_combined['flight_id'])
+        all_flights_set = set(df_all_flights['flight_id'])
 
+        missing_in_combined = all_flights_set - combined_set
+        missing_in_all_flights = combined_set - all_flights_set
+        logger.info(f"Missing flights in combined set: {missing_in_combined}")
+        logger.info(f"Missing flights in all flights set: {missing_in_all_flights}")
+        
     df_combined.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
     df_combined.to_excel(file_path, index=False)
     logger.info(f"Saved updated and new data for target group {target_group} at {file_path}")
+    
 @timer_func
 def process_file(file_path, parent_folder):
     """
@@ -130,7 +144,7 @@ def main():
     total_target_groups = len(dict.target_groups)
     processed_target_groups = 0
 
-    for target_group in dict.target_groups:
+    for target_group in [ '25-67', '68+', '35-59']:
         processed_target_groups += 1
         logger.info(f"Processing target group {target_group} ({processed_target_groups}/{total_target_groups})")
         process_target_group(target_group, df_all_flights)

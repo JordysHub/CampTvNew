@@ -43,19 +43,27 @@ def get_bereik(index, row, target_group: str, token: str):
 
     return df
 
-def get_new_and_updated_flights(df_bereik, df_all_flights):
+def get_new_and_updated_flights(df_bereik: pd.DataFrame, df_all_flights: pd.DataFrame) -> set | set:
     df_bereik = df_bereik.iloc[:, :5].drop_duplicates(subset=['flight_id'])
+    main_unique_ids = set(df_all_flights['flight_id'])
+    df_unique_ids = set(df_bereik['flight_id'])
+
     # get new flights
-    new_flight_ids = df_all_flights[~df_all_flights['flight_id'].isin(df_bereik['flight_id'])]['flight_id'].to_list()
+    missing_flights_in_df = list(main_unique_ids - df_unique_ids)
+
     # get updated flights
     merged_df = pd.merge(df_bereik, df_all_flights, on=['flight_id', 'advertiser', 'product'], suffixes=('_old', '_all'))
     filtered_df = merged_df[merged_df['end_date_all'] != merged_df['end_date_old']]
     updated_flight_ids = filtered_df['flight_id'].tolist()
 
-    combined_flight_ids = new_flight_ids + updated_flight_ids
+    combined_flight_ids = missing_flights_in_df + updated_flight_ids
     combined_flight_ids = set(combined_flight_ids)
 
-    return combined_flight_ids
+    # get flights that are in the df_bereik but not in the df_all_flights (possible changed in edge)
+    extra_flights_in_df = df_unique_ids - main_unique_ids
+    logger.debug("extra_flights_in_df: " + str(extra_flights_in_df))
+
+    return combined_flight_ids, extra_flights_in_df
 
 def fetch_all_data_new_tg(df_all_flights, target_group, file_path):
     logger.info(f"Fetching all data for new target group {target_group}...")
@@ -95,8 +103,6 @@ def change_column_order(df):
 
     column_order_first = ['flight_id', 'start_date', 'end_date', 'advertiser', 'product', 'daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
                           'npo1_grp', 'npo2_grp', 'npo3_grp',
-                          'regiotvutrecht_grp', 'tvnoord-holland_grp', 'l1tv_grp', 'omroepbrabanttv_grp',	'tvflevoland_grp',
-                          'tvzeeland_grp', 'tvgelderland_grp', 'tvoost_grp', 'tvdrenthe_grp', 'omropfryslantelevisie_grp', 'tvnoord_grp', 'tvrijmond_grp', 'tvwest_grp', 'at5_grp',
                           'npo1_1+', 'npo2_1+', 'npo3_1+',
                           'npo1_2+', 'npo2_2+', 'npo3_2+',
                           'npo1_3+', 'npo2_3+', 'npo3_3+',
@@ -107,21 +113,9 @@ def change_column_order(df):
                           'npo1_8+', 'npo2_8+', 'npo3_8+',
                           'npo1_9+', 'npo2_9+', 'npo3_9+',
                           'npo1_10+', 'npo2_10+', 'npo3_10+',
+                          'regio_1+', 'regio_2+', 'regio_3+', 'regio_4+', 'regio_5+', 'regio_6+', 'regio_7+', 'regio_8+', 'regio_9+', 'regio_10+',
                           'ster_1+', 'ster_2+', 'ster_3+', 'ster_4+', 'ster_5+', 'ster_6+', 'ster_7+', 'ster_8+', 'ster_9+', 'ster_10+',
-                          'regio_1+', 'regio_2+', 'regio_3+', 'regio_4+', 'regio_5+', 'regio_6+', 'regio_7+', 'regio_8+', 'regio_9+', 'regio_10+']
-
-    column_order_with_total = [col for col in df.columns if 'total' in col and col not in column_order_first]
-    column_order_with_adalliance = [col for col in df.columns if 'adalliance' in col and col not in column_order_first]
-    column_order_with_talpa = [col for col in df.columns if 'talpa' in col and col not in column_order_first]
-
-    columns_concat = column_order_first + column_order_with_total + column_order_with_adalliance + column_order_with_talpa
-    desired_column_order = column_order_first + [col for col in df.columns if col not in columns_concat] + \
-        column_order_with_adalliance + column_order_with_talpa + column_order_with_total
-        
-    # Identify missing columns and add them with a default value of 0
-    for col in desired_column_order:
-        if col not in df.columns:
-            df[col] = 0
+                          ]
 
     # Reorder the DataFrame
-    return df[desired_column_order]
+    return df[column_order_first]

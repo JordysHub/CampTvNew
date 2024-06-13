@@ -4,7 +4,6 @@ import os
 import camp_tv_new.src.utils.preprocess_spots as prep_spots
 import camp_tv_new.src.utils.flights_utils as fu
 import camp_tv_new.src.utils.date_utils as date_utils
-import camp_tv_new.src.utils.api_utils as api_utils
 
 from dotenv import load_dotenv
 from utils.logger import setup_logger, timer_func
@@ -89,6 +88,7 @@ def update_all_spots_file(all_spots_path, processed_spots_folder):
         logger.info(f'Filtered dictionary: {json.dumps(filtered_dict_serializable, indent=2)}')
                 
         try:
+            all_spots_df = pd.read_excel(all_spots_path, parse_dates=["date"])
             all_spots_df = pd.concat([all_spots_df, df_spots])
             all_spots_df.to_excel(all_spots_path, index=False)
         except UnboundLocalError: 
@@ -107,27 +107,31 @@ def create_flights_from_spots(df_spots: pd.DataFrame, all_flights_path: str):
         all_flights_path (str): Path to the output flights excel file.
     """
     # Segment campaigns by new start date
-    df_new_flights = fu.flights_segment_campaigns_by_new_start(df_spots)
+    df_flights = fu.flights_segment_campaigns_by_new_start(df_spots)
     # Determine start and end campaign dates
-    df_new_flights = fu.get_start_end_campaign_date(df_new_flights)
+    df_flights = fu.get_start_end_campaign_date(df_flights)
     # Split campaigns that are longer than two months
-    df_new_flights = fu.split_campaigns(df_new_flights)
+    df_flights = fu.split_campaigns(df_flights)
     
     # Prepare and make mock flights
-    df_new_flights = fu.calculate_date_possibilities_for_mock(df_new_flights)
-    df_mock_flights = fu.create_mock_flights(df_new_flights)
-    df_new_flights = fu.fill_up_original_flights_with_mock(df_new_flights, df_mock_flights) 
+    df_flights['mock_campaign'] = False
+    mock_campaigns_df = fu.create_mock_campaigns(df_flights)
 
-    df_new_flights.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
     # Change date format to DDMMYY (easier to use for api)
-    df_new_flights['start_date'] = pd.to_datetime(df_new_flights['start_date']).dt.strftime("%d%m%y")
-    df_new_flights['end_date'] = pd.to_datetime(df_new_flights['end_date']).dt.strftime("%d%m%y")
+    df_flights['start_date'] = pd.to_datetime(df_flights['start_date']).dt.strftime("%d%m%y")
+    df_flights['end_date'] = pd.to_datetime(df_flights['end_date']).dt.strftime("%d%m%y")
+    mock_campaigns_df['start_date'] = pd.to_datetime(mock_campaigns_df['start_date']).dt.strftime("%d%m%y")
+    mock_campaigns_df['end_date'] = pd.to_datetime(mock_campaigns_df['end_date']).dt.strftime("%d%m%y")
+    
     # Create unique flight_id
-    df_new_flights['flight_id'] = df_new_flights.apply(fu.generate_uuid_from_columns, axis=1)
-    df_new_flights = df_new_flights[['flight_id', 'advertiser', 'product', 'start_date', 'end_date', 'campaign_duration', 'mock_flight']]
-    df_new_flights.to_excel("./data/interim/flights/all_flights.xlsx", index=False)
-
-    return df_new_flights
+    df_flights['flight_id'] = df_flights.apply(fu.generate_uuid_from_columns, axis=1)
+    mock_campaigns_df['flight_id'] = mock_campaigns_df.apply(fu.generate_uuid_from_columns, axis=1)
+    
+    df_flights.sort_values(['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
+    mock_campaigns_df.sort_values(['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
+    
+    df_flights.to_excel("./data/interim/flights/all_flights.xlsx", index=False)
+    mock_campaigns_df.to_excel("./data/interim/flights/mock_campaigns_df.xlsx", index=False)
 
 def main():
 

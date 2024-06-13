@@ -2,9 +2,11 @@
 
 import pandas as pd
 import numpy as np
+import math
 import hashlib
 import uuid
 from datetime import timedelta
+from tqdm import tqdm
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     # preprocessing
@@ -19,7 +21,7 @@ def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
 
     # create temp flight_id. Later unique ID will be created from advertiser, product and start_date 
     df['flight_id'] = np.where(df['new_start'], [str(uuid.uuid4()) for _ in range(len(df))], None)
-    df['flight_id'] = df['flight_id'].fillna(method='ffill')  # future warning
+    df['flight_id'] = df['flight_id'].ffill()  # future warning
 
     return df
 
@@ -54,8 +56,6 @@ def split_campaigns(df_flights):
     df_flights = pd.concat([df_flights, new_campaigns], ignore_index=True)
     df_flights = df_flights[df_flights['campaign_duration'] != 0]
     
-    df_flights['mock_flight'] = False
-
     return df_flights
 
 def split_campaign(campaign):
@@ -107,7 +107,15 @@ def generate_uuid_from_columns(row):
     """
     # Concatenate values of the specified columns into a single string
     # Combination of advertiser, product, and start_date; no 'end-date' because the campaign can still run
-    concatenated_string = ''.join(str(row[col]) for col in ['advertiser', 'product', 'start_date', 'mock_flight']).lower().replace(" ", "")
+    
+    if row['mock_campaign']:
+        # For mock campaigns, include start_date and end_date in the UUID generation
+        concatenated_string = ''.join(
+            str('dummy_' + row[col]) for col in ['advertiser', 'product', 'start_date', 'end_date']).lower().replace(" ", "")
+    else:
+        # For original campaigns, use the existing logic
+        concatenated_string = ''.join(
+            str(row[col]) for col in ['advertiser', 'product', 'start_date']).lower().replace(" ", "")
 
     # Hash the concatenated string using sha256
     hashed_value = hashlib.sha256(concatenated_string.encode()).digest()
@@ -136,91 +144,73 @@ def update_flights(df_flights_old, df_flights_new):
     return df_flights_updated, df_flights_new_unique
 
 ############ MOCK FLIGHTS ################
+# original_duration = row['campaign_duration']
 
-def calculate_date_possibilities_for_mock(df_flights):
+def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.90, max_allowed_overlap = 0.9, max_mock_campaigns=30, max_attempts=120):
+    mock_campaigns = []
 
-    # Get the difference between start and end date
-    df_flights['difference'] = abs(df_flights['end_date'] - df_flights['start_date'])
-    df_flights['difference'] = df_flights['difference'].apply(lambda x: x.days).astype(int)
+    for _, row in tqdm(df_flight.iterrows(), total=len(df_flight), desc="Generating Mock Campaigns"):
+        original_duration = row['campaign_duration']
+        max_mock_duration = math.floor(int(original_duration * max_mock_duration_ratio))
 
-    # Check how many full X weeks fit into start and end date
-    for days_int in [x*7 for x in range(1,10)]:
-        df_flights[f'{days_int}days'] = (df_flights['difference'] / days_int)
-        df_flights[f'{days_int}days'] = np.where(df_flights[f'{days_int}days'] == 1.0*(days_int / 7), 0, df_flights[f'{days_int}days']).astype(int)
-        
-    return df_flights
+        if min_days_gap > max_mock_duration:
+            continue
 
-def create_single_mock_flight(flight_series, days_divider, df_mock_flights):
-    
-    jump_int = int(days_divider.replace('days', '')) # Create int to jump date
-    dfs_to_concat = []  # Create a list to store DataFrames
+        num_mock_campaigns = 0
+        attempts = 0
+        current_campaign_mocks = []
+        too_much_overlap = False
 
-    
-    # Loop through the amount of full days available in a campaign and create a mock campaign
-    # eg. If in the period range it's possible to fit 3 times 7 days, it creates new campaigns
-    # that start 7 days apart and last 7 days
-    for x in range(0, flight_series[days_divider]):
-        df_new_flight = pd.DataFrame({
-            'advertiser': [flight_series['advertiser']],
-            'product': [flight_series['product']],
-            'start_date': [flight_series['start_date'] + timedelta(days= x * jump_int)],
-            'end_date': [flight_series['start_date'] + timedelta(days= (x+1) * jump_int)]   
-            })
-        dfs_to_concat.append(df_new_flight)
-    
-    df_mock_flights = pd.concat([df_mock_flights] + dfs_to_concat, ignore_index=True)
-        
-    return df_mock_flights
-
-def create_mock_flights(df_flights):
-
-    df_mock_flights = pd.DataFrame()
-
-    for row in df_flights.iterrows():
-        for days_divider in [f'{x}days' for x in [x*7 for x in range(1,10)]]:
-            if row[1][days_divider] > 0:
-                df_mock_flights = create_single_mock_flight(row[1], days_divider, df_mock_flights)
-                df_mock_flights = df_mock_flights.reset_index(drop=True)
+        while num_mock_campaigns < max_mock_campaigns and attempts < max_attempts:
+            # Adjust the range based on original duration
+            if original_duration > 30:
+                mock_duration = np.random.randint(int(original_duration * 0.5), max_mock_duration + 1)
+            elif original_duration > 15:
+                mock_duration = np.random.randint(int(original_duration * 0.3), max_mock_duration + 1)
+            else:
+                mock_duration = np.random.randint(int(original_duration * 0.2), max_mock_duration + 1)
                 
-    df_mock_flights['mock_flight'] = True
-                
-    return df_mock_flights
+            # Ensure mock_duration is at least one
+            mock_duration = max(1, mock_duration)
 
-def fill_up_original_flights_with_mock(df_original_flights, df_mock_flights):
-    
-    # Check count of all campaigns dividable by weeks
-    df_original_counts = df_original_flights['difference'].value_counts().to_frame()
-    df_original_counts = df_original_counts.loc[[x*7 for x in range(1,8)]].reset_index()
-    df_original_counts = df_original_counts.rename(columns={'difference': 'days', 'count':'difference'})
-    
-    # Get amount of days mock campaigns last
-    df_mock_flights['difference'] = (df_mock_flights['end_date'] -  df_mock_flights['start_date']).apply(lambda x: x.days)
-    
-    # Fill up all campaigns dividable by weeks to 5000, so there'll be 5000 campaigns that went on for 7 days, 5000 campaigns
-    # that went on for 14 days, etc. etc.
-    for row in df_original_counts.iterrows():
-        days_int = row[1]['days']
-        add_amount = 5000 - row[1]['difference']
-        if add_amount > df_mock_flights[df_mock_flights['difference'] == days_int].shape[0]:
-            df_original_flights = pd.concat([df_original_flights, df_mock_flights[df_mock_flights['difference'] == days_int]], ignore_index=True)
-        else:
-            df_original_flights = pd.concat([df_original_flights, df_mock_flights[df_mock_flights['difference'] == days_int].sample(n=add_amount)])
+            # Generate a new start date within the allowed range
+            new_start_date = row['start_date'] + pd.DateOffset(days=np.random.randint(1, mock_duration + 1) - 1)
+            new_end_date = new_start_date + pd.DateOffset(days=mock_duration - 1)
             
-    df_original_flights['campaign_duration'] = (df_original_flights['end_date'] - df_original_flights['start_date']).dt.days + 1
+            if (new_start_date < row['start_date'] or new_end_date > row['end_date']):
+                attempts += 1
+                continue
 
-    return df_original_flights
+            # Ensure the mock campaign respects the min_days_gap constraint
+            start_date_gap = (new_start_date - row['start_date']).days
+            end_date_gap = (row['end_date'] - new_end_date).days
 
+            if (start_date_gap < min_days_gap and end_date_gap < min_days_gap):
+                attempts += 1
+                continue
+            
+            if not too_much_overlap:
+                for existing_mock in current_campaign_mocks:
+                    overlap_days = max(0, (min(existing_mock['end_date'], new_end_date) - max(existing_mock['start_date'], new_start_date)).days + 1)
+                    if (overlap_days / existing_mock['campaign_duration']) > max_allowed_overlap:
+                        too_much_overlap = True
 
-"""
-def process_flights_for_sql(df: pd.DataFrame) -> pd.DataFrame:
-    df["flight_id"] = df.apply(lambda x: create_unique_hash_id(x["advertiser"], x["product"], x["start_date"], x["end_date"]), axis=1)
-    # Reshape so it can be send to SQL
-    df = df.loc[:, ["flight_id", "advertiser", "product", "start_date", "end_date"]]
+            if not too_much_overlap:
+                current_campaign_mocks.append({
+                    'flight_id': f"mock_{row['flight_id']}_{num_mock_campaigns + 1}",
+                    'start_date': new_start_date,
+                    'end_date': new_end_date,
+                    'advertiser': row['advertiser'],
+                    'product': row['product'],
+                    'campaign_duration': mock_duration,
+                    'mock_campaign': True
+                })
+                    
+                num_mock_campaigns += 1
+                attempts = 0  # Reset attempts if a mock campaign is successfully added
+            else:
+                attempts += 1
 
-    # Change dates to string, 'cause SQL has trouble with datetime
-    df["start_date"] = df["start_date"].dt.strftime("%d-%m-%Y")
-    df["end_date"] = df["end_date"].dt.strftime("%d-%m-%Y")
+        mock_campaigns.extend(current_campaign_mocks)
 
-    return df
-
-"""
+    return pd.DataFrame(mock_campaigns)
