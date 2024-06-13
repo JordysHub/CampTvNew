@@ -1,38 +1,10 @@
 import utils.connection_utils as conn_utils
+from camp_tv_new.src.utils import api_utils
+
 import pandas as pd
 from datetime import datetime, date, timedelta
 import os
-from camp_tv_new.src.utils import api_utils
-
-def get_last_known_date_offline(spots_folder) -> date:
-    """
-    Retrieve the last known date from local files
-    """
-
-    latest_day = None
-    latest_date = None
-
-    for year_folder in os.listdir(spots_folder):
-        year_path = os.path.join(spots_folder, year_folder)
-        if not os.path.isdir(year_path):
-            continue
-
-        for month_folder in os.listdir(year_path):
-            month_path = os.path.join(year_path, month_folder)
-            if not os.path.isdir(month_path):
-                continue
-
-            for day_folder in os.listdir(month_path):
-                day_path = os.path.join(month_path, day_folder)
-                if not os.path.isdir(day_path):
-                    continue
-
-                day_date = int(day_folder)
-                if latest_date is None or day_date > latest_date:
-                    latest_date = day_date
-                    latest_day = day_path
-
-    return latest_day
+import sys
 
 def get_last_known_date(query: str) -> date:
     """
@@ -56,12 +28,15 @@ def get_existing_dates_in_folder(folder_path, date_format='%Y\%m\%d.xlsx'):
                     existing_dates.append(date)
                 except ValueError:
                     continue
+                
     return existing_dates
 
 def fetch_latest_date(folder_path):
     return api_utils.get_last_known_date_offline(folder_path)[0]
 
 def get_all_dates_in_range(start_date, end_date):
+    start_date = pd.to_datetime(start_date, format='%d%m%y')
+    end_date = pd.to_datetime(end_date, format='%d%m%y')
     return pd.date_range(start=start_date, end=end_date)
 
 def get_existing_dates_in_all_spots(all_spots_path):

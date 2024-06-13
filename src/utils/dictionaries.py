@@ -27,11 +27,9 @@ rename_dict = {
     'W145-75': 'W1 45-75'
 }
 
-queries = {
-    "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",
-    "spots_lastdate": """SELECT MAX(date) AS last_date FROM [tv_raw].[spots]""",
-    "flights": """SELECT * FROM [tv_raw].[flights]""",
-}
+wrong_campaigns = {'d292eff9-5bb9-135c-ac72-2c7fe1db1414', 'e3e0775e-1332-440e-6901-37e99601a58b', '5f8d66ac-4d00-c7e9-e815-56ae9ee9a13b',
+                    'eccdbf71-a705-5c06-ca25-4292ba35a41b', '245db335-3414-b63b-d907-1585585ba0ca', '2002a310-e825-09b7-ce40-9fe4d16b2550', 
+                    '695eee00-dcc5-9615-6ebc-96e3521fd1b0'}
 
 
 expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland", 
@@ -95,20 +93,27 @@ alcohol_kansspelen_dict = {
     "Treasury wine estates": {"products": ["Lindemans"], "category": "Alcohol"},
     "Walraven & sax": {"products": ["Hardy's"], "category": "Alcohol"},
     "Monnik dranken bv, de": {"products": ["Pravda"], "category": "Alcohol"},
-    "e-luscious nederland": {"products": ["Wijnvoordeel.nl"], "category": "unknown"},
+    "e-luscious nederland": {"products": ["Wijnvoordeel.nl"], "category": "Alcohol"},
     "poppodium tilburg 013": {"products": ["Poppodium tilburg 013"], "category": "unknown"},
-    "fair play centers": {"products": ["Fair play casino"], "category": "unknown"},
+    "fair play centers": {"products": ["Fair play casino"], "category": "Kansspelen"},
     "hillenaar events": {"products": ["Kamasutra"], "category": "unknown"},
     "groupm worldwide": {"products": ["Action"], "category": "unknown"},
     "reckitt benckiser": {"products": ["Durex"], "category": "unknown"},
-    "brown-forman beverages": {"products": ["Jack daniels"], "category": "unknown"},
+    "brown-forman beverages": {"products": ["Jack daniels"], "category": "Alcohol"},
     "loversland": {"products": ["Loversland"], "category": "unknown"},
-    "beer in a box bv": {"products": ["Beer in a box"], "category": "unknown"},
+    "beer in a box bv": {"products": ["Beer in a box"], "category": "Alcohol"},
 }
 
 olympic_period_list = [[date(2024, 7, 26), date(2024, 8, 11)],
                        [date(2028, 7, 21), date(2028, 8, 6)]]
 
-football_wk_ek_list = [[date(2022, 11, 21), date(2022, 12, 18)],
+football_wk_ek_list = [[date(2022, 11, 20), date(2022, 12, 18)],
                        [date(2024, 6, 14), date(2024, 7, 14)],
                        [date(2026, 6, 11), date(2026, 7, 19)]]
+
+
+queries = {
+    "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",
+    "spots_lastdate": """SELECT MAX(date) AS last_date FROM [tv_raw].[spots]""",
+    "flights": """SELECT * FROM [tv_raw].[flights]""",
+}

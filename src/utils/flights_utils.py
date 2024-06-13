@@ -25,7 +25,6 @@ def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
 def get_start_end_campaign_date(df: pd.DataFrame) -> pd.DataFrame:
     """
     This function calculates the start_date and end_date for each flight.
@@ -96,7 +95,6 @@ def split_campaign(campaign):
 
     return pd.DataFrame(sub_campaigns)
 
-
 def generate_uuid_from_columns(row):
     """
     Generates a (unique) UUID based on the values of the specified columns in the given row.
@@ -106,7 +104,7 @@ def generate_uuid_from_columns(row):
         uuid.UUID or None: The generated UUID or None if the UUID format is invalid.
     """
     # Concatenate values of the specified columns into a single string
-    # Combination of advertiser, product, and start_date; no 'end-date' because the campaign can still run
+    # Combination of advertiser, product, and start_date; no 'end-date' because the campaign can still run at this moment
     
     if row['mock_campaign']:
         # For mock campaigns, include start_date and end_date in the UUID generation
@@ -144,7 +142,6 @@ def update_flights(df_flights_old, df_flights_new):
     return df_flights_updated, df_flights_new_unique
 
 ############ MOCK FLIGHTS ################
-# original_duration = row['campaign_duration']
 
 def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.90, max_allowed_overlap = 0.9, max_mock_campaigns=30, max_attempts=120):
     mock_campaigns = []
@@ -189,6 +186,7 @@ def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.9
                 attempts += 1
                 continue
             
+            # Ensure there is not too much overlap with the other (mock) campaigns
             if not too_much_overlap:
                 for existing_mock in current_campaign_mocks:
                     overlap_days = max(0, (min(existing_mock['end_date'], new_end_date) - max(existing_mock['start_date'], new_start_date)).days + 1)

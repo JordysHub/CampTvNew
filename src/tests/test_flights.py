@@ -2,7 +2,6 @@ import pandas as pd
 import pytest
 import os
 
-
 @pytest.fixture
 def main_df_flights():
     # Create the main DataFrame with flight IDs
