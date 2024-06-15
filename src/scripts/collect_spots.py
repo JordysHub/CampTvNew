@@ -89,7 +89,7 @@ def get_spots(start_date: str, end_date: str, raw_spots_folder: str) -> pd.DataF
             logger.debug(f"Fetched data for {day.strftime('%d-%m-%Y')} from Spots TV API")
                 
     else:
-        logger.debug('All daily spots have already been fetched')
+        logger.debug('All daily spots have already been collected')
 
 if __name__ == "__main__":
     from dotenv import load_dotenv

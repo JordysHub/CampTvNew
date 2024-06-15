@@ -28,7 +28,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Get target_group data.")
     parser.add_argument(
         "--tg",
-        type = list,
+        type = str,
+        nargs='+',  # Allows one or more values to be provided for the --tg argument
         default = mydict.target_groups,
         help="List of target groups to process.",
     )
@@ -55,60 +56,82 @@ def get_bereik(df_flights, target_group: str) -> pd.DataFrame:
 
     return df_bereik
 
-def process_target_group(folder_path_bereik: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
+def fetch_and_save_new_data(file_path: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
     """
-    Process data for a specific target group.
+    Fetch and save new data for a target group.
     """
-    
-    directory_raw = f"{folder_path_bereik}{target_group}/"
-    os.makedirs(directory_raw, exist_ok=True)
-    file_path = os.path.join(directory_raw, f"{target_group}_bereik_all_flights.xlsx")
+    logger.info(f"Collecting all data for new target group {target_group}...")
+    try:
+        df_bereik = get_bereik(df_all_flights, target_group)
+        df_bereik.to_excel(file_path, index=False)
+        logger.info(f"Saved new data for target group {target_group} at {file_path}")
+    except Exception as e:
+        logger.error(f"Error collecting data for new target group {target_group}: {str(e)}")
 
-    if not os.path.exists(file_path):
-        logger.info(f"Collecting all data for new target group {target_group}...")
-        try:
-            df_bereik = get_bereik(df_all_flights, target_group)
-            df_bereik.to_excel(file_path, index=False)  
-        except Exception as e:
-            logger.error(f"Error collecting data for new target group {target_group}: {str(e)}")
-        return
+def update_existing_data(file_path: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
+    """
+    Update existing data for a target group.
+    """
+    logger.info(f"Updating existing data for target group {target_group}...")
+    try:
+        df_bereik_old = pd.read_excel(file_path, dtype={'start_date': str, 'end_date': str})
+        list_of_flights, extra_flights_in_df = bereik_utils.get_new_and_updated_flights(df_bereik_old, df_all_flights)
+        df_flights_to_get = df_all_flights[df_all_flights['flight_id'].isin(list_of_flights)]
 
-    df_bereik_old = pd.read_excel(file_path, dtype={'start_date': str, 'end_date': str})
-    list_of_flights, extra_flights_in_df = bereik_utils.get_new_and_updated_flights(df_bereik_old, df_all_flights)
-    df_flights_to_get = df_all_flights[df_all_flights['flight_id'].isin(list_of_flights)]
+        df_old_filtered = df_bereik_old[~df_bereik_old['flight_id'].isin(list_of_flights)]
+        df_old_filtered = df_old_filtered[~df_old_filtered['flight_id'].isin(extra_flights_in_df)]
+        df_bereik_new = get_bereik(df_flights_to_get, target_group)
+        df_combined = pd.concat([df_old_filtered, df_bereik_new], ignore_index=True)
 
-    df_old_filtered = df_bereik_old[~df_bereik_old['flight_id'].isin(list_of_flights)]
-    df_old_filtered = df_old_filtered[~df_old_filtered['flight_id'].isin(extra_flights_in_df)]
-    df_bereik_new = get_bereik(df_flights_to_get, target_group)
-    df_combined = pd.concat([df_old_filtered, df_bereik_new], ignore_index=True)
-    
-    # do a check if flights match
+        validate_data_integrity(df_combined, df_all_flights)
+
+        df_combined.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
+        df_combined.to_excel(file_path, index=False)
+        logger.info(f"Saved updated and new data for target group {target_group} at {file_path}")
+    except Exception as e:
+        logger.error(f"Error updating data for target group {target_group}: {str(e)}")
+
+def validate_data_integrity(df_combined: pd.DataFrame, df_all_flights: pd.DataFrame) -> None:
+    """
+    Validate the integrity of the combined data.
+    """
     if set(df_combined['flight_id']) != set(df_all_flights['flight_id']):
         logger.warning("The flight_id sets do not match.")
         combined_set = set(df_combined['flight_id'])
         all_flights_set = set(df_all_flights['flight_id'])
-        
+
         missing_in_combined = all_flights_set - combined_set
         missing_in_all_flights = combined_set - all_flights_set
         logger.info(f"Missing flights in combined set: {missing_in_combined}")
         logger.info(f"Missing flights in all flights set: {missing_in_all_flights}")
-        
-    df_combined.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
-    df_combined.to_excel(file_path, index=False)
-    logger.info(f"Saved updated and new data for target group {target_group} at {file_path}")
-    
+
+def process_target_group(raw_bereik_folder: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
+    """
+    Process data for a specific target group.
+    """
+    directory_raw = os.path.join(raw_bereik_folder, target_group)
+    os.makedirs(directory_raw, exist_ok=True)
+    file_path = os.path.join(directory_raw, f"{target_group}_bereik_all_flights.xlsx")
+
+    if not os.path.exists(file_path):
+        print('Raw bereik folder does not exist. Creating...')
+        fetch_and_save_new_data(file_path, target_group, df_all_flights)
+    else:
+        print(f'Raw bereik folder for target group {target_group} already exists. Updating...')
+        update_existing_data(file_path, target_group, df_all_flights)
+
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     args = parse_arguments()
-    
+
     all_flights_path = os.getenv("all_flights_path")
-    folder_path_bereik = os.getenv("raw_bereik_folder")
+    raw_bereik_folder = os.getenv("raw_bereik_folder")
     df_all_flights = pd.read_excel(all_flights_path, dtype={'start_date': str, 'end_date': str}, usecols=range(5))
-    
-    total_target_groups = len(dict.target_groups)
+
+    total_target_groups = len(args.tg)
     for i, target_group in enumerate(args.tg, start=1):
         logger.info(f"Processing target group {target_group} ({i}/{total_target_groups})")
-        process_target_group(folder_path_bereik, target_group, df_all_flights)
-        
+        process_target_group(raw_bereik_folder, target_group, df_all_flights)
+
     logger.info("Raw bereik collected for all flights")

@@ -1,3 +1,10 @@
+import pandas as pd
+from tqdm import tqdm
+import os
+
+import camp_tv_new.src.utils.bereik_utils as bereik_utils
+from camp_tv_new.src.utils.logger import timer_func
+
 @timer_func
 def process_file(file_path, parent_folder):
     """
@@ -35,10 +42,10 @@ def process_directory(directory_path):
                     process_file(file_path, parent_folder)
                     pbar_files.update(1)  # Update progress bar for each file processed
 
-    # logger.info("Raw bereik fetched for all flights")
-    # logger.info("Process raw bereik...")
+    logger.info("Raw bereik fetched for all flights")
+    logger.info("Process raw bereik...")
 
-    # raw_bereik_folder = os.getenv("raw_bereik_folder") 
-    # process_directory(raw_bereik_folder)
+    raw_bereik_folder = os.getenv("raw_bereik_folder") 
+    process_directory(raw_bereik_folder)
 
-    # logger.info("Bereik processed for all target groups")
+    logger.info("Bereik processed for all target groups")
