@@ -22,7 +22,7 @@ def setup_logger(file_path = "logs/",console_logging=True):
     urllib3_logger.setLevel(logging.WARNING)
 
     # Create log file with date-based name
-    log_file = f"daily_log_{datetime.now().strftime('%d-%m-%Y')}.log"
+    log_file = f"{datetime.now().strftime('%m-%Y')}/{datetime.now().strftime('%d')}_daily_log_.log"
     file_handler = logging.FileHandler(file_path + log_file)
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(FileFormatter(fmt='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%m-%Y %H:%M:%S'))  # Use custom file formatter

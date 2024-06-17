@@ -7,6 +7,8 @@ from tqdm import tqdm
 import warnings
 import os
 import argparse
+import time
+import random
 
 import camp_tv_new.src.utils.bereik_utils as bereik_utils
 import camp_tv_new.src.utils.api_utils as api_utils
@@ -35,24 +37,55 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs):
+    """
+    Retry a function with exponential backoff.
+
+    Parameters:
+        func (callable): The function to be retried.
+        retries (int): Number of retries.
+        initial_wait (int): Initial wait time between retries.
+        max_wait (int): Maximum wait time between retries.
+    """
+    wait = initial_wait
+    for attempt in range(retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt == retries - 1:
+                raise
+            time.sleep(wait)
+            wait = min(wait * 2, max_wait)
+
 @timer_func
 def get_bereik(df_flights, target_group: str) -> pd.DataFrame:
-
+    """
+    Fetch bereik data for the given flights and target group.
+    """
     df_bereik = pd.DataFrame()
-    current_token_time = time.time()  # Get current time when starting
-    token = api_utils.get_api_token()  # Fetch initial token
+    current_token_time = time.time()
+    token = api_utils.get_api_token()
 
     for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
                        desc=f"Processing flights for target group {target_group}",
                        bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
-
         if time.time() - current_token_time >= 3000:
             logger.debug("Refreshing token...")
             token = api_utils.get_api_token()
             current_token_time = time.time()
 
-        df = bereik_utils.get_bereik(row.name, row, target_group, token)
-        df_bereik = pd.concat([df_bereik, df], ignore_index=True)
+        def fetch_bereik():
+            return bereik_utils.get_bereik(row.name, row, target_group, token)
+
+        try:
+            # Retry fetching bereik for the current row if an error occurs
+            df = retry_with_exponential_backoff(fetch_bereik)
+            df_bereik = pd.concat([df_bereik, df], ignore_index=True)
+        except Exception as e:
+            # Log error and continue with the next row
+            df_bereik.to_excel(f"../data/interim/bereik_error/bereik_{target_group}.xlsx", index=False)
+            logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
 
     return df_bereik
 

@@ -3,9 +3,11 @@ from tqdm import tqdm
 import os
 
 import camp_tv_new.src.utils.bereik_utils as bereik_utils
-from camp_tv_new.src.utils.logger import timer_func
+from camp_tv_new.src.utils.logger import setup_logger, timer_func
 
-@timer_func
+logger = setup_logger()
+
+
 def process_file(file_path, parent_folder):
     """
     Process a single file by updating the flight_id for each row of data.
@@ -26,12 +28,14 @@ def process_file(file_path, parent_folder):
     # Save the DataFrame to Excel
     processed_df.to_excel(output_file_path, index=False)
 
+@timer_func
 def process_directory(directory_path):
     """
     Process all files in a directory and its subdirectories.
     Args:
         directory_path (str): Path to the directory.
     """
+    logger.info("Process raw bereik...")
     total_files = sum(len(files) for _, _, files in os.walk(directory_path))
     with tqdm(total=total_files, desc="Processing Files") as pbar_files:
         for root, dirs, files in os.walk(directory_path):
@@ -41,11 +45,14 @@ def process_directory(directory_path):
                     parent_folder = os.path.basename(os.path.dirname(file_path))
                     process_file(file_path, parent_folder)
                     pbar_files.update(1)  # Update progress bar for each file processed
-
-    logger.info("Raw bereik fetched for all flights")
-    logger.info("Process raw bereik...")
-
+    
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+    
     raw_bereik_folder = os.getenv("raw_bereik_folder") 
     process_directory(raw_bereik_folder)
 
     logger.info("Bereik processed for all target groups")
+    
+    
