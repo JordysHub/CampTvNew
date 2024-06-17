@@ -20,6 +20,8 @@ import camp_tv_new.src.utils.dictionaries as mydict
 # warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
+COLLECT_MOCKS = False
+
 # Setup logger
 logger = setup_logger()
 
@@ -159,12 +161,20 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     all_flights_path = os.getenv("all_flights_path")
+    all_mocks_path = os.getenv("all_mocks_path")
     raw_bereik_folder = os.getenv("raw_bereik_folder")
     df_all_flights = pd.read_excel(all_flights_path, dtype={'start_date': str, 'end_date': str}, usecols=range(5))
+    df_all_mocks = pd.read_excel(all_mocks_path, dtype={'start_date': str, 'end_date': str}, usecols=range(5))
 
     total_target_groups = len(args.tg)
     for i, target_group in enumerate(args.tg, start=1):
         logger.info(f"Processing target group {target_group} ({i}/{total_target_groups})")
         process_target_group(raw_bereik_folder, target_group, df_all_flights)
+        
+    if COLLECT_MOCKS:
+        for i, target_group in enumerate(args.tg, start=1):
+            logger.info(f"Processing mock_campaigns for target group {target_group} ({i}/{total_target_groups})")
+            process_target_group(raw_bereik_folder, target_group, df_all_mocks)
+        
 
     logger.info("Raw bereik collected for all flights")

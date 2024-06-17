@@ -32,6 +32,30 @@ def valid_date(s):
         logger.debug(msg)  # Log error message as a debug message
         raise argparse.ArgumentTypeError(msg)
 
+def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
+    rename_targetgroup = {'V25-67': 'V 25-67',
+                          'M25-67': 'M 25-67'}
+    target_group = rename_targetgroup.get(target_group, target_group)
+
+    dict_call = {
+        "target": target_group,
+        "report": 'JordyPop',
+        "period": "-1d",
+    }
+
+    res = requests.post(
+        "https://sternl.iea.grouptechedge.com/api/advantedge",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=dict_call
+    )
+
+    data = json.loads(res.text)[1]["Pivot"]["items"]
+    df = pd.DataFrame(data)
+
+    return df
 
 # def get_last_known_date_offline(root_folder) -> date:
 #     """
