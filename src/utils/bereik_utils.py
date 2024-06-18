@@ -101,21 +101,26 @@ def process_row(row):
 
 def change_column_order(df):
 
-    column_order_first = ['flight_id', 'start_date', 'end_date', 'advertiser', 'product', 'daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
-                          'npo1_grp', 'npo2_grp', 'npo3_grp',
-                          'npo1_1+', 'npo2_1+', 'npo3_1+',
-                          'npo1_2+', 'npo2_2+', 'npo3_2+',
-                          'npo1_3+', 'npo2_3+', 'npo3_3+',
-                          'npo1_4+', 'npo2_4+', 'npo3_4+',
-                          'npo1_5+', 'npo2_5+', 'npo3_5+',
-                          'npo1_6+', 'npo2_6+', 'npo3_6+',
-                          'npo1_7+', 'npo2_7+', 'npo3_7+',
-                          'npo1_8+', 'npo2_8+', 'npo3_8+',
-                          'npo1_9+', 'npo2_9+', 'npo3_9+',
-                          'npo1_10+', 'npo2_10+', 'npo3_10+',
-                          'regio_1+', 'regio_2+', 'regio_3+', 'regio_4+', 'regio_5+', 'regio_6+', 'regio_7+', 'regio_8+', 'regio_9+', 'regio_10+',
-                          'ster_1+', 'ster_2+', 'ster_3+', 'ster_4+', 'ster_5+', 'ster_6+', 'ster_7+', 'ster_8+', 'ster_9+', 'ster_10+',
-                          ]
+    print(df.columns)
+    column_order = ['flight_id', 'start_date', 'end_date', 'campaign_duration', 'advertiser', 'product', 'daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
+                    'npo1_grp', 'npo2_grp', 'npo3_grp',
+                    'npo1_1+', 'npo2_1+', 'npo3_1+',
+                    'npo1_2+', 'npo2_2+', 'npo3_2+',
+                    'npo1_3+', 'npo2_3+', 'npo3_3+',
+                    'npo1_4+', 'npo2_4+', 'npo3_4+',
+                    'npo1_5+', 'npo2_5+', 'npo3_5+',
+                    'npo1_6+', 'npo2_6+', 'npo3_6+',
+                    'npo1_7+', 'npo2_7+', 'npo3_7+',
+                    'npo1_8+', 'npo2_8+', 'npo3_8+',
+                    'npo1_9+', 'npo2_9+', 'npo3_9+',
+                    'npo1_10+', 'npo2_10+', 'npo3_10+',
+                    'regio_1+', 'regio_2+', 'regio_3+', 'regio_4+', 'regio_5+', 'regio_6+', 'regio_7+', 'regio_8+', 'regio_9+', 'regio_10+',
+                    'ster_1+', 'ster_2+', 'ster_3+', 'ster_4+', 'ster_5+', 'ster_6+', 'ster_7+', 'ster_8+', 'ster_9+', 'ster_10+']
 
-    # Reorder the DataFrame
-    return df[column_order_first]
+    return df[column_order]
+
+def calculate_campaign_duration(row):
+    start_date = pd.to_datetime(row['start_date'], format='%d%m%y')
+    end_date = pd.to_datetime(row['end_date'], format='%d%m%y')
+    return (end_date - start_date).days
+

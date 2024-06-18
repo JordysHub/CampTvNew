@@ -95,7 +95,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     
-    raw_spots_folder = os.getenv("raw_spots_folder")
+    raw_spots_folder = str(os.getenv("raw_spots_folder"))
     args = parse_arguments()
     print(args.start_date, args.end_date, raw_spots_folder)
     get_spots(args.start_date, args.end_date, raw_spots_folder)

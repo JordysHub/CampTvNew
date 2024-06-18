@@ -61,7 +61,7 @@ def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_w
             wait = min(wait * 2, max_wait)
 
 @timer_func
-def get_bereik(df_flights, target_group: str, file_path) -> pd.DataFrame:
+def get_bereik(df_flights, target_group: str, file_path: str) -> pd.DataFrame:
     """
     Fetch bereik data for the given flights and target group.
     """
@@ -128,7 +128,7 @@ def update_existing_data(file_path: str, target_group: str, df_all_flights: pd.D
 
         df_old_filtered = df_bereik_old[~df_bereik_old['flight_id'].isin(list_of_flights)]
         df_old_filtered = df_old_filtered[~df_old_filtered['flight_id'].isin(extra_flights_in_df)]
-        df_bereik_new = get_bereik(df_flights_to_get, target_group)
+        df_bereik_new = get_bereik(df_flights_to_get, target_group, file_path)
         df_combined = pd.concat([df_old_filtered, df_bereik_new], ignore_index=True)
 
         validate_data_integrity(df_combined, df_all_flights)

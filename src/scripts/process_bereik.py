@@ -19,6 +19,8 @@ def process_file(file_path, parent_folder: str):
     df = pd.read_excel(file_path, dtype={'start_date': str, 'end_date': str})
     processed_rows = [bereik_utils.process_row(row) for _, row in df.iterrows()]
     processed_df = pd.DataFrame(processed_rows).fillna(0)
+    # calculate campaign duration
+    processed_df['campaign_duration'] = processed_df.apply(lambda row: bereik_utils.calculate_campaign_duration(row), axis=1)
     # change column order
     processed_df = bereik_utils.change_column_order(processed_df)
     # Write the updated DataFrame back to the Excel file
