@@ -143,20 +143,7 @@ def update_flights(df_flights_old, df_flights_new):
 
 ############ MOCK FLIGHTS ################
 
-def create_mock_campaigns(df_flights, all_mocks_path, min_days_gap=2, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.9, max_mock_campaigns=20, max_attempts=50):
-    # avoid saving already existing mocks
-    try:
-        all_mock_campaigns = pd.read_excel(all_mocks_path, dtype={'start_date': str, 'end_date': str})
-        existing_mocks_set = set(
-            (row['advertiser'], 
-             row['product'],
-             pd.to_datetime(row['start_date'].dt.strftime("%d%m%y")), 
-             pd.to_datetime(row['end_date'].dt.strftime("%d%m%y")))
-            for _, row in all_mock_campaigns.iterrows())
-    except FileNotFoundError:
-        print(f"File not found: {all_mocks_path}")
-        existing_mocks_set = set()
-
+def create_mock_campaigns(df_flights, min_days_gap=2, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.9, max_mock_campaigns=20, max_attempts=100):
     new_mock_campaigns = []
 
     for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), desc="Generating Mock Campaigns"):
@@ -206,8 +193,7 @@ def create_mock_campaigns(df_flights, all_mocks_path, min_days_gap=2, max_mock_d
                     if (overlap_days / existing_mock['campaign_duration']) > max_allowed_overlap:
                         too_much_overlap = True
 
-            mock_identifier = (row['advertiser'], row['product'], new_start_date, new_end_date)
-            if not too_much_overlap and mock_identifier not in existing_mocks_set:                
+            if not too_much_overlap:             
                 new_mock = {
                     'flight_id': f"mock_{row['flight_id']}_{num_mock_campaigns + 1}",
                     'start_date': new_start_date,
@@ -217,9 +203,8 @@ def create_mock_campaigns(df_flights, all_mocks_path, min_days_gap=2, max_mock_d
                     'campaign_duration': mock_duration,
                     'mock_campaign': True
                 }
+                
                 current_campaign_mocks.append(new_mock)
-                existing_mocks_set.add(mock_identifier)
-
                 num_mock_campaigns += 1
                 attempts = 0  # Reset attempts if a mock campaign is successfully added
             else:

@@ -89,7 +89,3 @@ def timer_func(func):
         return result
 
     return wrap_func
-
-
-
-# {datetime.now().strftime('%m-%Y')}/

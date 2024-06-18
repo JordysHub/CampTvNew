@@ -20,7 +20,7 @@ import random
 # warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 # warnings.simplefilter(action='ignore', category=FutureWarning)
 
-COLLECT_MOCKS = False
+COLLECT_MOCKS = True
 
 # Setup logger
 logger = setup_logger()
@@ -61,15 +61,17 @@ def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_w
             wait = min(wait * 2, max_wait)
 
 @timer_func
-def get_bereik(df_flights, target_group: str) -> pd.DataFrame:
+def get_bereik(df_flights, target_group: str, file_path) -> pd.DataFrame:
     """
     Fetch bereik data for the given flights and target group.
     """
+    all_flights_path = str(os.getenv("all_flights_path"))
     df_bereik = pd.DataFrame()
     current_token_time = time.time()
     token = api_utils.get_api_token()
+    rows_to_remove = []
 
-    for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
+    for idx, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
                        desc=f"Processing flights for target group {target_group}",
                        bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
         
@@ -84,11 +86,21 @@ def get_bereik(df_flights, target_group: str) -> pd.DataFrame:
         try:
             # Retry fetching bereik for the current row if an error occurs
             df = retry_with_exponential_backoff(fetch_bereik)
-            df_bereik = pd.concat([df_bereik, df], ignore_index=True)
+            if not df.empty:
+                df_bereik = pd.concat([df_bereik, df], ignore_index=True)
+            else:
+                # Add index to rows_to_remove if df is empty (campaign doesnt exist or has changed)
+                rows_to_remove.append(idx)
         except Exception as e:
             # Log error and continue with the next row
-            df_bereik.to_excel(f"../data/interim/bereik_error/bereik_{target_group}.xlsx", index=False)
+            df_bereik.to_excel(f"{file_path}_uncomplete.xlsx", index=False)
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
+    
+    # Remove rows from df_flights
+    df_flights.drop(rows_to_remove, inplace=True)
+    df_flights.reset_index(drop=True, inplace=True)  # Reset index after dropping rows
+    df_flights.to_excel(all_flights_path, index=False)
+    logger.info(f"Deleted {len(rows_to_remove)} rows from df_all_flights")
 
     return df_bereik
 
@@ -98,7 +110,7 @@ def fetch_and_save_new_data(file_path: str, target_group: str, df_all_flights: p
     """
     logger.info(f"Collecting all data for new target group {target_group}...")
     try:
-        df_bereik = get_bereik(df_all_flights, target_group)
+        df_bereik = get_bereik(df_all_flights, target_group, file_path)
         df_bereik.to_excel(file_path, index=False)
         logger.info(f"Saved new data for target group {target_group} at {file_path}")
     except Exception as e:

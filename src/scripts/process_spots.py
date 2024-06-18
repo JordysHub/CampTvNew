@@ -3,10 +3,11 @@
 
 import pandas as pd
 import os
-from utils.logger import setup_logger
+from utils.logger import setup_logger, timer_func
 
 logger = setup_logger()
 
+@timer_func
 def collect_raw_spots(raw_spots_folder, processed_spots_folder, missing_dates):
     if not missing_dates:
         logger.debug('Processed all daily spots')

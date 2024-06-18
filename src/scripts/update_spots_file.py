@@ -3,7 +3,8 @@
 
 import os
 import pandas as pd
-from utils.logger import setup_logger
+
+from src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.date_utils as date_utils
 
 logger = setup_logger()
@@ -25,6 +26,7 @@ def count_spots(df):
     spot_counts = df.groupby(['advertiser', 'product', 'date']).size().reset_index(name='spot_count')
     return df.merge(spot_counts, on=['advertiser', 'product', 'date'])[['advertiser', 'product', 'date', 'spot_count']].drop_duplicates()
 
+@timer_func
 def update_all_spots_file(all_spots_path, processed_spots_folder):
     all_spots_file_dates = date_utils.get_existing_dates_in_all_spots(all_spots_path)
     existing_processed_spots_dates = date_utils.get_existing_dates_in_folder(processed_spots_folder)
