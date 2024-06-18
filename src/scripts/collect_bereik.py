@@ -1,6 +1,12 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import camp_tv_new.src.utils.bereik_utils as bereik_utils
+import camp_tv_new.src.utils.api_utils as api_utils
+import camp_tv_new.src.utils.dictionaries as dict
+from camp_tv_new.src.utils.logger import setup_logger, timer_func
+import camp_tv_new.src.utils.dictionaries as mydict
+
 import pandas as pd
 import time
 from tqdm import tqdm
@@ -10,15 +16,9 @@ import argparse
 import time
 import random
 
-import camp_tv_new.src.utils.bereik_utils as bereik_utils
-import camp_tv_new.src.utils.api_utils as api_utils
-import camp_tv_new.src.utils.dictionaries as dict
-from camp_tv_new.src.utils.logger import setup_logger, timer_func
-import camp_tv_new.src.utils.dictionaries as mydict
-
 # pd.set_option('future.no_silent_downcasting', True)
 # warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-warnings.simplefilter(action='ignore', category=FutureWarning)
+# warnings.simplefilter(action='ignore', category=FutureWarning)
 
 COLLECT_MOCKS = False
 
@@ -72,6 +72,7 @@ def get_bereik(df_flights, target_group: str) -> pd.DataFrame:
     for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
                        desc=f"Processing flights for target group {target_group}",
                        bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
+        
         if time.time() - current_token_time >= 3000:
             logger.debug("Refreshing token...")
             token = api_utils.get_api_token()
@@ -140,13 +141,18 @@ def validate_data_integrity(df_combined: pd.DataFrame, df_all_flights: pd.DataFr
         logger.info(f"Missing flights in combined set: {missing_in_combined}")
         logger.info(f"Missing flights in all flights set: {missing_in_all_flights}")
 
-def process_target_group(raw_bereik_folder: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
+def process_target_group(raw_bereik_folder: str, target_group: str, df_all_flights: pd.DataFrame, is_mock: bool = False) -> None:
     """
     Process data for a specific target group.
     """
-    directory_raw = os.path.join(raw_bereik_folder, target_group)
+    # Create a subdirectory for mock campaigns if is_mock is True
+    subdir = 'mock_campaigns' if is_mock else ''
+    directory_raw = os.path.join(raw_bereik_folder, target_group, subdir)
     os.makedirs(directory_raw, exist_ok=True)
-    file_path = os.path.join(directory_raw, f"{target_group}_bereik_all_flights.xlsx")
+
+    # Adjust the filename to include 'mock' if is_mock is True
+    filename_suffix = '_mock' if is_mock else ''
+    file_path = os.path.join(directory_raw, f"{target_group}_bereik_all_flights{filename_suffix}.xlsx")
 
     if not os.path.exists(file_path):
         print('Raw bereik folder does not exist. Creating...')
@@ -160,11 +166,11 @@ if __name__ == "__main__":
     load_dotenv()
     args = parse_arguments()
 
-    all_flights_path = os.getenv("all_flights_path")
-    all_mocks_path = os.getenv("all_mocks_path")
-    raw_bereik_folder = os.getenv("raw_bereik_folder")
+    all_flights_path = str(os.getenv("all_flights_path"))
+    all_mocks_path = str(os.getenv("all_mocks_path"))
+    raw_bereik_folder = str(os.getenv("raw_bereik_folder"))
     df_all_flights = pd.read_excel(all_flights_path, dtype={'start_date': str, 'end_date': str}, usecols=range(5))
-    df_all_mocks = pd.read_excel(all_mocks_path, dtype={'start_date': str, 'end_date': str}, usecols=range(5))
+    
 
     total_target_groups = len(args.tg)
     for i, target_group in enumerate(args.tg, start=1):
@@ -172,9 +178,9 @@ if __name__ == "__main__":
         process_target_group(raw_bereik_folder, target_group, df_all_flights)
         
     if COLLECT_MOCKS:
+        df_all_mocks = pd.read_excel(all_mocks_path, dtype={'start_date': str, 'end_date': str})
         for i, target_group in enumerate(args.tg, start=1):
             logger.info(f"Processing mock_campaigns for target group {target_group} ({i}/{total_target_groups})")
-            process_target_group(raw_bereik_folder, target_group, df_all_mocks)
-        
+            process_target_group(raw_bereik_folder, target_group, df_all_mocks, is_mock=True)
 
     logger.info("Raw bereik collected for all flights")

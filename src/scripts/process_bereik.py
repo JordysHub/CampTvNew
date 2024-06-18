@@ -8,13 +8,13 @@ from camp_tv_new.src.utils.logger import setup_logger, timer_func
 logger = setup_logger()
 
 
-def process_file(file_path, parent_folder):
+def process_file(file_path, parent_folder: str):
     """
     Process a single file by updating the flight_id for each row of data.
     Args:
         file_path (str): Path to the file.
     """
-    bereik_processed_folder = os.getenv("bereik_processed_folder")
+    bereik_processed_folder = str(os.getenv("bereik_processed_folder"))
     # Read the file and process each row
     df = pd.read_excel(file_path, dtype={'start_date': str, 'end_date': str})
     processed_rows = [bereik_utils.process_row(row) for _, row in df.iterrows()]
@@ -42,7 +42,7 @@ def process_directory(directory_path):
             for file in files:
                 if file.endswith('.xlsx'):
                     file_path = os.path.join(root, file)
-                    parent_folder = os.path.basename(os.path.dirname(file_path))
+                    parent_folder = str(os.path.basename(os.path.dirname(file_path)))
                     process_file(file_path, parent_folder)
                     pbar_files.update(1)  # Update progress bar for each file processed
     
@@ -50,9 +50,9 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
     
-    raw_bereik_folder = os.getenv("raw_bereik_folder") 
+    raw_bereik_folder = str(os.getenv("raw_bereik_folder"))
+    
     process_directory(raw_bereik_folder)
-
     logger.info("Bereik processed for all target groups")
     
     

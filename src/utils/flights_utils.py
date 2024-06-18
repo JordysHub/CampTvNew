@@ -143,10 +143,23 @@ def update_flights(df_flights_old, df_flights_new):
 
 ############ MOCK FLIGHTS ################
 
-def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.90, max_allowed_overlap = 0.9, max_mock_campaigns=30, max_attempts=120):
-    mock_campaigns = []
+def create_mock_campaigns(df_flights, all_mocks_path, min_days_gap=2, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.9, max_mock_campaigns=20, max_attempts=50):
+    # avoid saving already existing mocks
+    try:
+        all_mock_campaigns = pd.read_excel(all_mocks_path, dtype={'start_date': str, 'end_date': str})
+        existing_mocks_set = set(
+            (row['advertiser'], 
+             row['product'],
+             pd.to_datetime(row['start_date'].dt.strftime("%d%m%y")), 
+             pd.to_datetime(row['end_date'].dt.strftime("%d%m%y")))
+            for _, row in all_mock_campaigns.iterrows())
+    except FileNotFoundError:
+        print(f"File not found: {all_mocks_path}")
+        existing_mocks_set = set()
 
-    for _, row in tqdm(df_flight.iterrows(), total=len(df_flight), desc="Generating Mock Campaigns"):
+    new_mock_campaigns = []
+
+    for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), desc="Generating Mock Campaigns"):
         original_duration = row['campaign_duration']
         max_mock_duration = math.floor(int(original_duration * max_mock_duration_ratio))
 
@@ -166,14 +179,14 @@ def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.9
                 mock_duration = np.random.randint(int(original_duration * 0.3), max_mock_duration + 1)
             else:
                 mock_duration = np.random.randint(int(original_duration * 0.2), max_mock_duration + 1)
-                
+
             # Ensure mock_duration is at least one
             mock_duration = max(1, mock_duration)
 
             # Generate a new start date within the allowed range
             new_start_date = row['start_date'] + pd.DateOffset(days=np.random.randint(1, mock_duration + 1) - 1)
             new_end_date = new_start_date + pd.DateOffset(days=mock_duration - 1)
-            
+
             if (new_start_date < row['start_date'] or new_end_date > row['end_date']):
                 attempts += 1
                 continue
@@ -185,7 +198,7 @@ def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.9
             if (start_date_gap < min_days_gap and end_date_gap < min_days_gap):
                 attempts += 1
                 continue
-            
+
             # Ensure there is not too much overlap with the other (mock) campaigns
             if not too_much_overlap:
                 for existing_mock in current_campaign_mocks:
@@ -193,8 +206,9 @@ def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.9
                     if (overlap_days / existing_mock['campaign_duration']) > max_allowed_overlap:
                         too_much_overlap = True
 
-            if not too_much_overlap:
-                current_campaign_mocks.append({
+            mock_identifier = (row['advertiser'], row['product'], new_start_date, new_end_date)
+            if not too_much_overlap and mock_identifier not in existing_mocks_set:                
+                new_mock = {
                     'flight_id': f"mock_{row['flight_id']}_{num_mock_campaigns + 1}",
                     'start_date': new_start_date,
                     'end_date': new_end_date,
@@ -202,13 +216,15 @@ def create_mock_campaigns(df_flight, min_days_gap=2, max_mock_duration_ratio=0.9
                     'product': row['product'],
                     'campaign_duration': mock_duration,
                     'mock_campaign': True
-                })
-                    
+                }
+                current_campaign_mocks.append(new_mock)
+                existing_mocks_set.add(mock_identifier)
+
                 num_mock_campaigns += 1
                 attempts = 0  # Reset attempts if a mock campaign is successfully added
             else:
                 attempts += 1
 
-        mock_campaigns.extend(current_campaign_mocks)
+        new_mock_campaigns.extend(current_campaign_mocks)
 
-    return pd.DataFrame(mock_campaigns)
+    return pd.DataFrame(new_mock_campaigns)
