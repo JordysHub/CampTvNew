@@ -1,8 +1,8 @@
 from datetime import datetime, date
-# '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1', 
+# '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1',
 
 target_groups = ['25-67', 'B2B', '20-49', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+',
-                 '7-12', 'BDS 25-59', 'BDS 25-67',
+                 '7-12', 'BDS 25-59', 'BDS 25-67', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1',
                  'BDS KZ12', 'BDS+KND', 'DAG 25-59', 'M 20-49', 'M 25-54', 'M 25-59',
                  'M 25-67', 'M 50+', 'V 20-49', 'V 25-54', 'V 25-59', 'V 25-67', 'V 40+',
                  'V 50+', 'W1 45-75']
@@ -26,16 +26,13 @@ rename_dict = {
     'W145-75': 'W1 45-75'
 }
 
-wrong_campaigns = {'d292eff9-5bb9-135c-ac72-2c7fe1db1414', 'e3e0775e-1332-440e-6901-37e99601a58b', '5f8d66ac-4d00-c7e9-e815-56ae9ee9a13b',
-                    'eccdbf71-a705-5c06-ca25-4292ba35a41b', '245db335-3414-b63b-d907-1585585ba0ca', '2002a310-e825-09b7-ce40-9fe4d16b2550', 
-                    '695eee00-dcc5-9615-6ebc-96e3521fd1b0', '245db335-3414-b63b-d907-1585585ba0ca'}
+wrong_campaigns = {'d292eff9-5bb9-135c-ac72-2c7fe1db1414', '5f8d66ac-4d00-c7e9-e815-56ae9ee9a13b', '2c18b08d-3a03-7ef5-d8ab-8827fae2f028'}
+wrong_mocks = {'f2b26da5-283d-243f-babf-c3263c253c00', '67defb0d-eb2c-4b88-16d9-bc2fb3d22058'}
 
 
-expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland", 
-                "tvzeeland", "tvgelderland", "tvoost", "tvdrenthe", "omropfryslantelevisie", "tvnoord", "tvrijmond", "tvwest", "at5",
-                "regio", "orn", "talpa", "adalliance", "total"]
-
-expl_list_radio = ["nporadio1", "nporadio2", "npo3fm", "npoklassiek", "nporadio5", "ster", "ornradio", "total"]
+# expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland",
+#                 "tvzeeland", "tvgelderland", "tvoost", "tvdrenthe", "omropfryslantelevisie", "tvnoord", "tvrijmond", "tvwest", "at5",
+#                 "regio", "orn", "talpa", "adalliance", "total"]
 
 alcohol_kansspelen_dict = {
     "Bavaria": {"products": ["Bavaria", "Palm", "Swinckels"], "category": "Alcohol"},
@@ -109,7 +106,6 @@ olympic_period_list = [[date(2024, 7, 26), date(2024, 8, 11)],
 football_wk_ek_list = [[date(2022, 11, 20), date(2022, 12, 18)],
                        [date(2024, 6, 14), date(2024, 7, 14)],
                        [date(2026, 6, 11), date(2026, 7, 19)]]
-
 
 queries = {
     "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",

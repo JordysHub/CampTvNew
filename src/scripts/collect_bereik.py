@@ -87,7 +87,7 @@ def get_bereik(df_flights, target_group: str, file_path) -> pd.DataFrame:
             df_bereik = pd.concat([df_bereik, df], ignore_index=True)
         except Exception as e:
             # Log error and continue with the next row
-            df_bereik.to_excel(f"{file_path}_uncomplete.xlsx", index=False)
+            df_bereik.to_excel(f"{os.path.splitext(file_path)[0]}_uncomplete.xlsx", index=False)
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
 
     return df_bereik
@@ -130,8 +130,7 @@ def process_target_group(raw_bereik_folder: str, target_group: str, df_all_fligh
     Process data for a specific target group.
     """
     # Create a subdirectory for mock campaigns if is_mock is True
-    subdir = 'mock_campaigns' if is_mock else ''
-    directory_raw = os.path.join(raw_bereik_folder, target_group, subdir)
+    directory_raw = os.path.join(raw_bereik_folder, target_group)
     os.makedirs(directory_raw, exist_ok=True)
 
     # Adjust the filename to include 'mock' if is_mock is True

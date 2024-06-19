@@ -10,7 +10,7 @@ def setup_logger(base_log_path="logs/", console_logging=True):
 
     # Check if logger already has handlers
     if logger.hasHandlers():
-        return logger  # Return the logger if handlers are already set up
+        logger.handlers.clear()
 
     # Configure the root logger
     logger.setLevel(logging.DEBUG)
@@ -21,12 +21,12 @@ def setup_logger(base_log_path="logs/", console_logging=True):
     # Configure the logging level for urllib3, which is used by requests
     urllib3_logger = logging.getLogger("urllib3")
     urllib3_logger.setLevel(logging.WARNING)
-    
+
     # Create log directory based on the current year and month
     current_time = datetime.now()
     year = current_time.strftime('%Y')
     month = current_time.strftime('%m')
-    log_folder = os.path.join(base_log_path, year, month)
+    log_folder = os.path.join(base_log_path, month)
     os.makedirs(log_folder, exist_ok=True)
 
     # Create log file with date-based name

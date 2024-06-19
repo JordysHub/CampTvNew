@@ -41,16 +41,19 @@ def main():
 
         # Execute spots processing script
         run_script("src/scripts/process_spots.py")
-        
+
         # Update all spots file
         run_script("src/scripts/update_spots_file.py")
-        
+
         # Execute flights collection script
         run_script("src/scripts/create_flights.py")
-        
+
         # Execute bereik collection script
         run_script("src/scripts/collect_bereik.py")
-    
+
+        # Execute bereik processing script
+        run_script("src/scripts/process_bereik.py")
+
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
 
