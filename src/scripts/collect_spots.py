@@ -38,7 +38,7 @@ def parse_arguments():
     return parser.parse_args()
 
 @timer_func
-def get_spots(start_date: str, end_date: str, raw_spots_folder: str) -> pd.DataFrame:
+def get_spots(start_date: str, end_date: str, raw_spots_folder: str):
     """
     Fetch spot data for the given date range and save to the specified folder.
 
@@ -66,20 +66,20 @@ def get_spots(start_date: str, end_date: str, raw_spots_folder: str) -> pd.DataF
                 current_token_time = time.time()  # Update token refresh time
 
             day_str = day.strftime("%d%m%y")
-            
+
             try:
                 df = api_utils.call_kdh_getter_report(day_str, token)
             except Exception as e:
                 logger.error(f"Failed to fetch data for {day_str}: {e}")
                 continue
-            
+
             df['date'] = pd.to_datetime(df['date']).dt.date
             df.iloc[:, 5:] = df.iloc[:, 5:].astype(str)
 
             # Extract day, month, and year from the date string
             day_int, month_int, year_int = day_str[:2], day_str[2:4], '20' + day_str[4:6]
             directory = os.path.join(raw_spots_folder, year_int, month_int)
-            
+
             # Create the directory if it doesn't exist
             os.makedirs(directory, exist_ok=True)
 
@@ -87,14 +87,14 @@ def get_spots(start_date: str, end_date: str, raw_spots_folder: str) -> pd.DataF
             file_path = os.path.join(directory, f"{day_int}.xlsx")
             df.to_excel(file_path, index=False)
             logger.debug(f"Fetched data for {day.strftime('%d-%m-%Y')} from Spots TV API")
-                
+
     else:
         logger.debug('All daily spots have already been collected')
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
-    
+
     raw_spots_folder = str(os.getenv("raw_spots_folder"))
     args = parse_arguments()
     print(args.start_date, args.end_date, raw_spots_folder)

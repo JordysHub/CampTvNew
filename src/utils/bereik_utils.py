@@ -122,5 +122,5 @@ def change_column_order(df):
 def calculate_campaign_duration(row):
     start_date = pd.to_datetime(row['start_date'], format='%d%m%y')
     end_date = pd.to_datetime(row['end_date'], format='%d%m%y')
-    return (end_date - start_date).days
+    return (end_date - start_date).days + 1
 

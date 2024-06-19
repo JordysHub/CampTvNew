@@ -53,7 +53,6 @@ if __name__ == "__main__":
     load_dotenv()
     
     raw_bereik_folder = str(os.getenv("raw_bereik_folder"))
-    
     process_directory(raw_bereik_folder)
     logger.info("Bereik processed for all target groups")
     

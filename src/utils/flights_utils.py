@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     # preprocessing
-    df = df[["advertiser", "product", "date"]].drop_duplicates()
-    df = df.sort_values(by=["advertiser", "product", "date"]).reset_index(drop=True)
+    df = df[["advertiser", "product", "date", "ster_grp", "total_grp"]].drop_duplicates()
+    df = df.sort_values(by=["advertiser", "product", "date", "ster_grp", "total_grp"]).reset_index(drop=True)
 
     # Calculate how many days between current date and last date
     df["difference_last"] = (abs(df["date"] - df["date"].shift(1)).apply(lambda x: x.days).fillna(0).astype(int))
@@ -43,6 +43,18 @@ def get_start_end_campaign_date(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
+def group_and_sum_grps(df: pd.DataFrame, date_df: pd.DataFrame) -> pd.DataFrame:
+    numeric_cols = ['npo_1_grp', 'npo_2_grp', 'npo_3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
+    grp_sum = df.groupby(['advertiser', 'product', 'flight_id'])[numeric_cols].sum().reset_index()
+
+    # Get the start and end dates with campaign duration
+    dates_df = get_start_end_campaign_date(df)
+
+    # Merge the GRP sums with the dates and campaign duration
+    final_df = grp_sum.merge(dates_df, how='left', on=['advertiser', 'product', 'flight_id'])
+
+    return final_df
+
 def split_campaigns(df_flights):
     long_campaigns = df_flights[df_flights['campaign_duration'] > 60]
     new_campaigns = pd.DataFrame()
@@ -54,7 +66,7 @@ def split_campaigns(df_flights):
     df_flights = df_flights.drop(long_campaigns.index)
     df_flights = pd.concat([df_flights, new_campaigns], ignore_index=True)
     df_flights = df_flights[df_flights['campaign_duration'] != 0]
-    
+
     return df_flights
 
 def split_campaign(campaign):
@@ -105,7 +117,7 @@ def generate_uuid_from_columns(row):
     """
     # Concatenate values of the specified columns into a single string
     # Combination of advertiser, product, and start_date; no 'end-date' because the campaign can still run at this moment
-    
+
     if row['mock_campaign']:
         # For mock campaigns, include start_date and end_date in the UUID generation
         concatenated_string = ''.join(
@@ -145,6 +157,8 @@ def update_flights(df_flights_old, df_flights_new):
 
 def create_mock_campaigns(df_flights, min_days_gap=2, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.9, max_mock_campaigns=20, max_attempts=100):
     new_mock_campaigns = []
+    df_flights['start_date'] = pd.to_datetime(df_flights['start_date'], format='%d%m%y')
+    df_flights['end_date'] = pd.to_datetime(df_flights['end_date'], format='%d%m%y')
 
     for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), desc="Generating Mock Campaigns"):
         original_duration = row['campaign_duration']
