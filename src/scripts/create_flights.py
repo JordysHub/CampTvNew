@@ -29,7 +29,7 @@ def create_flights_from_spots(df_spots: pd.DataFrame, all_flights_path: str):
     df_flights['start_date'] = pd.to_datetime(df_flights['start_date']).dt.strftime("%d%m%y")
     df_flights['end_date'] = pd.to_datetime(df_flights['end_date']).dt.strftime("%d%m%y")
     df_flights['mock_campaign'] = False
-    df_flights['flight_id'] = df_flights.apply(fu.generate_uuid_from_columns, axis=1)
+    df_flights['flight_id'] = df_flights.apply(fu.generate_uuid_from_columns, data_type = 'flight', axis=1)
 
     df_flights.sort_values(['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
     df_flights = df_flights[['flight_id', 'advertiser', 'product', 'start_date', 'end_date', 'campaign_duration', 'ster_grp', 'total_grp', 'mock_campaign']]
@@ -49,7 +49,7 @@ def create_mocks_from_flights(df_flights, all_mocks_path: str):
     mock_campaigns_df['start_date'] = pd.to_datetime(mock_campaigns_df['start_date']).dt.strftime("%d%m%y")
     mock_campaigns_df['end_date'] = pd.to_datetime(mock_campaigns_df['end_date']).dt.strftime("%d%m%y")
     mock_campaigns_df['mock_campaign'] = True
-    mock_campaigns_df['flight_id'] = mock_campaigns_df.apply(fu.generate_uuid_from_columns, axis=1)
+    mock_campaigns_df['flight_id'] = mock_campaigns_df.apply(fu.generate_uuid_from_columns, data_type = 'mock', axis=1)
 
     mock_campaigns_df.sort_values(by=['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
     mock_campaigns_df.to_excel(all_mocks_path, index=False)

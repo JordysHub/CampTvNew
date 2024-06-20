@@ -101,7 +101,6 @@ def process_row(row):
 
 def change_column_order(df):
 
-    print(df.columns)
     column_order = ['flight_id', 'start_date', 'end_date', 'campaign_duration', 'advertiser', 'product', 'daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
                     'npo1_grp', 'npo2_grp', 'npo3_grp',
                     'npo1_1+', 'npo2_1+', 'npo3_1+',
@@ -123,4 +122,3 @@ def calculate_campaign_duration(row):
     start_date = pd.to_datetime(row['start_date'], format='%d%m%y')
     end_date = pd.to_datetime(row['end_date'], format='%d%m%y')
     return (end_date - start_date).days + 1
-

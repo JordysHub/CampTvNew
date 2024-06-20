@@ -1,11 +1,12 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import pandas as pd
-
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.date_utils as date_utils
+import camp_tv_new.src.utils.flights_utils as fu
+
+import os
+import pandas as pd
 
 logger = setup_logger()
 
@@ -56,6 +57,9 @@ def update_all_spots_file(all_spots_path, processed_spots_folder):
 
         # Count spots per day for each advertiser
         df_spots = count_spots_and_grp(df_spots)
+
+        # create unqiue ID for every row
+        df_spots['id'] = df_spots.apply(fu.generate_uuid_from_columns, data_type = 'spot', axis=1)
 
         # Append or write to all_spots_path
         try:

@@ -19,7 +19,7 @@ def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     # New_start = start of a 'new' campaign, either because advertisers don't match or product doesn't match or more than 8 days between dates
     df["new_start"] = (df["difference_last"] > 8) | ((df["advertiser"] != df["advertiser"].shift(1)) | (df["product"] != df["product"].shift(1)))
 
-    # create temp flight_id. Later unique ID will be created from advertiser, product and start_date 
+    # create temp flight_id. Later unique ID will be created from advertiser, product and start_date
     df['flight_id'] = np.where(df['new_start'], [str(uuid.uuid4()) for _ in range(len(df))], None)
     df['flight_id'] = df['flight_id'].ffill()  # future warning
 
@@ -76,7 +76,7 @@ def split_campaign(campaign):
 
     sub_campaigns = []
     while campaign_duration > 60:
-        next_start_date = (start_date + timedelta(days=61)).replace(day=1) 
+        next_start_date = (start_date + timedelta(days=61)).replace(day=1)
         this_end_date = next_start_date - timedelta(days=1)
         this_campaign_duration = (this_end_date - start_date).days + 1
 
@@ -107,7 +107,7 @@ def split_campaign(campaign):
 
     return pd.DataFrame(sub_campaigns)
 
-def generate_uuid_from_columns(row):
+def generate_uuid_from_columns(row, data_type):
     """
     Generates a (unique) UUID based on the values of the specified columns in the given row.
     Args:
@@ -118,14 +118,17 @@ def generate_uuid_from_columns(row):
     # Concatenate values of the specified columns into a single string
     # Combination of advertiser, product, and start_date; no 'end-date' because the campaign can still run at this moment
 
-    if row['mock_campaign']:
+    if data_type == "mock":
         # For mock campaigns, include start_date and end_date in the UUID generation
         concatenated_string = ''.join(
-            str('dummy_' + row[col]) for col in ['advertiser', 'product', 'start_date', 'end_date']).lower().replace(" ", "")
-    else:
+            str('mock_' + row[col]) for col in ['advertiser', 'product', 'start_date', 'end_date']).lower().replace(" ", "")
+    elif data_type == "flight":
         # For original campaigns, use the existing logic
         concatenated_string = ''.join(
             str(row[col]) for col in ['advertiser', 'product', 'start_date']).lower().replace(" ", "")
+    elif data_type == "spot":
+        concatenated_string = ''.join(
+            str(row[col]) for col in ['advertiser', 'product', 'date']).lower().replace(" ", "")
 
     # Hash the concatenated string using sha256
     hashed_value = hashlib.sha256(concatenated_string.encode()).digest()
@@ -207,7 +210,7 @@ def create_mock_campaigns(df_flights, min_days_gap=2, max_mock_duration_ratio=0.
                     if (overlap_days / existing_mock['campaign_duration']) > max_allowed_overlap:
                         too_much_overlap = True
 
-            if not too_much_overlap:             
+            if not too_much_overlap:
                 new_mock = {
                     'flight_id': f"mock_{row['flight_id']}_{num_mock_campaigns + 1}",
                     'start_date': new_start_date,
@@ -217,7 +220,7 @@ def create_mock_campaigns(df_flights, min_days_gap=2, max_mock_duration_ratio=0.
                     'campaign_duration': mock_duration,
                     'mock_campaign': True
                 }
-                
+
                 current_campaign_mocks.append(new_mock)
                 num_mock_campaigns += 1
                 attempts = 0  # Reset attempts if a mock campaign is successfully added
