@@ -12,9 +12,9 @@ def create_sql_alchemy_engine():
     Creates and returns a SQLAlchemy engine for connecting to a SQL Server database.
     """
     quoted = quote_plus(
-        "Driver={SQL Server};"
+        "Driver={ODBC+Driver+17+for+SQL+Server};"
         "Server=tcp:stercampsql.database.windows.net;"
-        "Database=SterCamp;"
+        "Database=SterCampNew;"
         "uid=stercampadmin;"
         f"pwd={os.getenv('SQLDB')}"
     )

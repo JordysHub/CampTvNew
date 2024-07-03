@@ -1,62 +1,43 @@
 import pandas as pd
 import pytest
 import os
+from sqlalchemy import create_engine, MetaData, Table
+from sqlalchemy.orm import sessionmaker
+import camp_tv_new.src.utils.database_utils as db_utils
+import camp_tv_new.src.utils.connection_utils as con_utils
 
-@pytest.fixture
-def main_df_flights():
-    # Create the main DataFrame with flight IDs
-    main_df_flights = pd.read_excel('./data/external/all_flights.xlsx')
-    return main_df_flights
+def query_to_df(query):
+    engine = con_utils.create_sql_alchemy_engine()
+    df_query = pd.read_sql_query(query, engine)
 
-@pytest.fixture
-def target_groups_flights_raw():
-    return load_dataframes('./data/raw/api/bereik')	
+    return df_query
 
-def load_dataframes(directory):
-    dataframes = []
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.endswith('.xlsx'):
-                file_path = os.path.join(root, file)
-                df = pd.read_excel(file_path, usecols=range(5))
-                df = df.drop_duplicates()
-                dataframes.append(df)
-    return dataframes
+@pytest.fixture(scope='module')
+def bereik_data():
+    query = 'SELECT DISTINCT flight_id, target_group, campaign_duration FROM [dbo].[tv.bereik]'
+    return query_to_df(query)
 
-##################################################################################################################################
-def test_flight_ids():
-    """
-    Make sure all bereik df have the same amount of flights, and flight_ids are the same.
-    """
-    main_unique_ids = set(main_df_flights['flight_id'])
+@pytest.fixture(scope='module')
+def flights_data():
+    query = 'SELECT flight_id, campaign_duration FROM [dbo].[tv.flights] WHERE mock_campaign = 0'
+    return query_to_df(query)
 
-    for df in target_groups_flights_raw:
-        df_unique_ids = set(df['flight_id'])
-        if df_unique_ids != main_unique_ids:
-            pytest.fail(f"{df} doesn't have the same flight_ids as main_df_flights")
-            return False
+@pytest.mark.parametrize('target_group', ['13+'])
+def test_campaign_duration_for_target_group(target_group, bereik_data, flights_data):
+    bereik_data_tg = bereik_data[bereik_data['target_group'] == target_group]
+    flights_data_tg = flights_data.copy()
 
-    return True
+    # Dictionary to store mismatched durations
+    mismatched_durations = {}
 
-def test_flights():
-    """
-    Make sure for all flights, the details are the same.
-    """
-    df_all_flights = main_df_flights
+    for index, row in bereik_data_tg.iterrows():
+        flight_id = row['flight_id']
+        bereik_duration = row['campaign_duration']
 
-    for df in target_groups_flights_raw:
+        if flight_id in flights_data_tg['flight_id'].values:
+            flights_duration = flights_data_tg.loc[flights_data_tg['flight_id'] == flight_id, 'campaign_duration'].iloc[0]
 
-        for idx, row in df.iterrows():
-            flight_id = row['flight_id']
-            advertiser = row['advertiser']
-            product = row['product']
-            start_date = row['start_date']
-            end_date = row['end_date']
+            if bereik_duration != flights_duration:
+                mismatched_durations[flight_id] = (bereik_duration, flights_duration)
 
-            matching_row = df_all_flights[(df_all_flights['flight_id'] == flight_id) &
-                                          (df_all_flights['advertiser'] == advertiser) &
-                                          (df_all_flights['product'] == product) &
-                                          (df_all_flights['start_date'] == start_date) &
-                                          (df_all_flights['end_date'] == end_date)]
-
-            assert not matching_row.empty, f"No matching row found in df_all_flights for flight ID {flight_id}"
+    assert not mismatched_durations, f"Mismatched campaign durations found for target group {target_group}: {mismatched_durations}"

@@ -1,5 +1,4 @@
 from datetime import datetime, date
-# '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1',
 
 target_groups = ['25-67', 'B2B', '20-49', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+',
                  '7-12', 'BDS 25-59', 'BDS 25-67', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1',
@@ -25,14 +24,6 @@ rename_dict = {
     'V50+': 'V 50+',
     'W145-75': 'W1 45-75'
 }
-
-wrong_campaigns = {'d292eff9-5bb9-135c-ac72-2c7fe1db1414', '5f8d66ac-4d00-c7e9-e815-56ae9ee9a13b', '2c18b08d-3a03-7ef5-d8ab-8827fae2f028'}
-wrong_mocks = {'f2b26da5-283d-243f-babf-c3263c253c00', '67defb0d-eb2c-4b88-16d9-bc2fb3d22058'}
-
-
-# expl_list_tv = ["npo1", "npo2", "npo3", "ster", "regiotvutrecht", "tvnoord-holland", "l1tv", "omroepbrabanttv", "tvflevoland",
-#                 "tvzeeland", "tvgelderland", "tvoost", "tvdrenthe", "omropfryslantelevisie", "tvnoord", "tvrijmond", "tvwest", "at5",
-#                 "regio", "orn", "talpa", "adalliance", "total"]
 
 alcohol_kansspelen_dict = {
     "Bavaria": {"products": ["Bavaria", "Palm", "Swinckels"], "category": "Alcohol"},
@@ -107,8 +98,11 @@ football_wk_ek_list = [[date(2022, 11, 20), date(2022, 12, 18)],
                        [date(2024, 6, 14), date(2024, 7, 14)],
                        [date(2026, 6, 11), date(2026, 7, 19)]]
 
+
+
 queries = {
     "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",
     "spots_lastdate": """SELECT MAX(date) AS last_date FROM [tv_raw].[spots]""",
+    "spots_all_dates": """"SELECT DISTINCT date FROM [dbo].[tv.spots]""",
     "flights": """SELECT * FROM [tv_raw].[flights]""",
 }

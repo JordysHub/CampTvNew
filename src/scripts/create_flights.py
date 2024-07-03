@@ -5,64 +5,69 @@ import pandas as pd
 import os
 from utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.flights_utils as fu
-import camp_tv_new.src.utils.dictionaries as mydict
+import camp_tv_new.src.utils.database_utils as db_utils
 
 logger = setup_logger()
 
-@timer_func
-def create_flights_from_spots(df_spots: pd.DataFrame, all_flights_path: str):
-    logger.info("Creating flights from spots...")
-
+def preprocess_flights(df_spots: pd.DataFrame):
     segmented_df = fu.flights_segment_campaigns_by_new_start(df_spots)
-    grp_sum = segmented_df.groupby(['advertiser', 'product', 'flight_id'])[['ster_grp', 'total_grp']].sum().reset_index()
-
-    # Get the start and end dates with campaign duration
+    grp_sum = segmented_df.groupby(['advertiser', 'product', 'flight_id'])[['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']].sum().reset_index()
     dates_df = fu.get_start_end_campaign_date(segmented_df)
-
-    # Merge the summed data with the dates
     df_flights = grp_sum.merge(dates_df, how='left', on=['advertiser', 'product', 'flight_id'])
-
-    # split campaigns which are longer than 2 months into multiple flights of max 2 months
-    df_flights = fu.split_campaigns(df_flights)
-
-    # create unqiue flight ids
-    df_flights['start_date'] = pd.to_datetime(df_flights['start_date']).dt.strftime("%d%m%y")
-    df_flights['end_date'] = pd.to_datetime(df_flights['end_date']).dt.strftime("%d%m%y")
-    df_flights['mock_campaign'] = False
-    df_flights['flight_id'] = df_flights.apply(fu.generate_uuid_from_columns, data_type = 'flight', axis=1)
-
-    df_flights.sort_values(['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
-    df_flights = df_flights[['flight_id', 'advertiser', 'product', 'start_date', 'end_date', 'campaign_duration', 'ster_grp', 'total_grp', 'mock_campaign']]
-
-    # Filter out the flights that don't have any GRPs at Ster
-    df_flights_ster = df_flights[df_flights['ster_grp'] > 1]
-    # df_flights_others = df_flights[df_flights['ster_grp'] < 1] # maybe useful for later
-    df_flights_ster.to_excel(all_flights_path, index=False)
-
+    df_flights = fu.split_campaigns(df_flights, df_spots)
     return df_flights
 
-def create_mocks_from_flights(df_flights, all_mocks_path: str):
-    # create mock campaigns
+def finalize_flights(df_flights: pd.DataFrame, data_type: str):
+    df_flights['mock_campaign'] = (data_type == 'mock')
+    df_flights['flight_id'] = df_flights.apply(fu.generate_uuid_from_columns, data_type=data_type, axis=1)
+    df_flights.sort_values(['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
+    df_flights = df_flights[['flight_id', 'advertiser', 'product', 'start_date', 'end_date', 'campaign_duration',
+                             'npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp',
+                             'adalliance_grp', 'talpa_grp', 'total_grp', 'mock_campaign']]
+    df_flights = df_flights[df_flights['campaign_duration'] > 5]
+    return df_flights
+
+def create_flights_from_spots(df_spots: pd.DataFrame):
+    logger.info("Creating flights from spots...")
+    df_flights = preprocess_flights(df_spots)
+    df_flights = finalize_flights(df_flights, data_type='flight')
+    return df_flights
+
+def create_mocks_from_flights(df_flights: pd.DataFrame, df_spots: pd.DataFrame):
     logger.info("Creating mock campaigns from spots...")
-    mock_campaigns_df = fu.create_mock_campaigns(df_flights)
-
-    mock_campaigns_df['start_date'] = pd.to_datetime(mock_campaigns_df['start_date']).dt.strftime("%d%m%y")
-    mock_campaigns_df['end_date'] = pd.to_datetime(mock_campaigns_df['end_date']).dt.strftime("%d%m%y")
-    mock_campaigns_df['mock_campaign'] = True
-    mock_campaigns_df['flight_id'] = mock_campaigns_df.apply(fu.generate_uuid_from_columns, data_type = 'mock', axis=1)
-
-    mock_campaigns_df.sort_values(by=['advertiser', 'product', 'start_date', 'end_date'], inplace=True)
-    mock_campaigns_df.to_excel(all_mocks_path, index=False)
+    mock_campaigns_df = fu.create_mock_campaigns(df_flights, min_mock_duration=6)
+    mock_campaigns_df = fu.calculate_grps_for_mock_campaigns(mock_campaigns_df, df_spots)
+    mock_campaigns_df = finalize_flights(mock_campaigns_df, data_type='mock')
+    return mock_campaigns_df
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv()
+    table_name = "tv.flights"
 
-    all_spots_path = str(os.getenv('all_spots_path'))
-    all_flights_path = str(os.getenv('all_flights_path'))
-    all_mocks_path = str(os.getenv('all_mocks_path'))
+    # Read the entire table into a DataFrame
+    query = 'SELECT * FROM [dbo].[tv.spots]'
+    df_spots = db_utils.query_to_df(query)
 
-    # Read spots file and filter out spots which have no GRPs with Ster. We don't need to fetch bereik (at this point) for these spots, so we also don't need
-    df_spots = pd.read_excel(all_spots_path)
-    df_flights = create_flights_from_spots(df_spots, all_flights_path)
-    create_mocks_from_flights(df_flights, all_mocks_path)
+    # Create flights from spots
+    df_flights = create_flights_from_spots(df_spots)
+    # Get a list of unique flight IDs to delete, in order to dump the new (updated) flights
+    list_of_flights_to_delete = df_flights['flight_id'].unique().tolist()
+    # Delete existing normal flights from the database
+    if list_of_flights_to_delete:
+        db_utils.delete_flights(list_of_flights_to_delete, '[tv.flights]')
+
+    if df_flights.shape[0] == 0:
+        logger.info(f"No new rows to insert for {table_name}")
+    else:
+        logger.info(f"Number of rows to insert for {table_name}: {df_flights.shape[0]}")
+        db_utils.dump_to_sql(df_flights, table_name=table_name)
+
+    # Create mocks from flights
+    df_mocks = create_mocks_from_flights(df_flights, df_spots)
+    # Check existing primary keys
+    df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
+
+    if df_mocks_to_insert.shape[0] == 0:
+        logger.info(f"No new rows to insert for {table_name}")
+    else:
+        logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
+        db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)

@@ -3,24 +3,17 @@
 
 import camp_tv_new.src.utils.bereik_utils as bereik_utils
 import camp_tv_new.src.utils.api_utils as api_utils
-import camp_tv_new.src.utils.dictionaries as dict
+import camp_tv_new.src.utils.database_utils as db_utils
+import camp_tv_new.src.utils.connection_utils as con_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.dictionaries as mydict
 
 import pandas as pd
 import time
 from tqdm import tqdm
-import warnings
 import os
 import argparse
 import time
-import random
-
-# pd.set_option('future.no_silent_downcasting', True)
-# warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-# warnings.simplefilter(action='ignore', category=FutureWarning)
-
-COLLECT_MOCKS = True
 
 # Setup logger
 logger = setup_logger()
@@ -39,33 +32,11 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs):
-    """
-    Retry a function with exponential backoff.
-
-    Parameters:
-        func (callable): The function to be retried.
-        retries (int): Number of retries.
-        initial_wait (int): Initial wait time between retries.
-        max_wait (int): Maximum wait time between retries.
-    """
-    wait = initial_wait
-    for attempt in range(retries):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
-            if attempt == retries - 1:
-                raise
-            time.sleep(wait)
-            wait = min(wait * 2, max_wait)
-
 @timer_func
-def get_bereik(df_flights, target_group: str, file_path) -> pd.DataFrame:
+def get_bereik(df_flights, target_group: str):
     """
     Fetch bereik data for the given flights and target group.
     """
-    df_bereik = pd.DataFrame()
     current_token_time = time.time()
     token = api_utils.get_api_token()
 
@@ -82,89 +53,75 @@ def get_bereik(df_flights, target_group: str, file_path) -> pd.DataFrame:
             return bereik_utils.get_bereik(row.name, row, target_group, token)
 
         try:
-            # Retry fetching bereik for the current row if an error occurs
-            df = retry_with_exponential_backoff(fetch_bereik)
-            df_bereik = pd.concat([df_bereik, df], ignore_index=True)
+            # Fetch data, preprocess and dump to sql
+            df = api_utils.retry_with_exponential_backoff(fetch_bereik)
+            processed_df = bereik_utils.process_raw_bereik_data(df, target_group)
+            db_utils.dump_to_sql(processed_df, 'tv.bereik')
+
         except Exception as e:
-            # Log error and continue with the next row
-            df_bereik.to_excel(f"{os.path.splitext(file_path)[0]}_uncomplete.xlsx", index=False)
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
 
-    return df_bereik
-
-def fetch_and_save_new_data(file_path: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
-    """
-    Fetch and save new data for a target group.
-    """
-    logger.info(f"Collecting all data for new target group {target_group}...")
-    try:
-        df_bereik = get_bereik(df_all_flights, target_group, file_path)
-        df_bereik.to_excel(file_path, index=False)
-        logger.info(f"Saved new data for target group {target_group} at {file_path}")
-    except Exception as e:
-        logger.error(f"Error collecting data for new target group {target_group}: {str(e)}")
-
-def update_existing_data(file_path: str, target_group: str, df_all_flights: pd.DataFrame) -> None:
+def update_existing_data(target_group: str, df_all_flights: pd.DataFrame, bereik_data_tg: pd.DataFrame) -> None:
     """
     Update existing data for a target group.
     """
-    logger.info(f"Updating existing data for target group {target_group}...")
     try:
-        df_bereik_old = pd.read_excel(file_path, dtype={'start_date': str, 'end_date': str})
-        list_of_flights, extra_flights_in_df = bereik_utils.get_new_and_updated_flights(df_bereik_old, df_all_flights)
-        df_flights_to_get = df_all_flights[df_all_flights['flight_id'].isin(list_of_flights)]
+        # Step 1: Get flights that need to be updated and are new
+        missing_flights_in_db, flights_to_update = bereik_utils.get_new_and_updated_flights(bereik_data_tg, df_all_flights)
+        print(len(flights_to_update), len(missing_flights_in_db))
 
-        df_old_filtered = df_bereik_old[~df_bereik_old['flight_id'].isin(list_of_flights)]
-        df_old_filtered = df_old_filtered[~df_old_filtered['flight_id'].isin(extra_flights_in_df)]
-        df_bereik_new = get_bereik(df_flights_to_get, target_group, file_path)
-        df_combined = pd.concat([df_old_filtered, df_bereik_new], ignore_index=True)
+        # Step 2: Delete flights from db that need to be updated
+        if len(flights_to_update) > 0:
+            logger.info(f"Deleteting {len(flights_to_update)} flights from db to update")
+            db_utils.delete_flights(flights_to_update, table_name = '[tv.bereik]')
 
-        df_combined.sort_values(by=['advertiser', 'product', 'start_date'], inplace=True)
-        df_combined.to_excel(file_path, index=False)
-        logger.info(f"Saved updated and new data for target group {target_group} at {file_path}")
+        # Step 3: Get new flights for target group and update existing flights
+        if len(missing_flights_in_db) > 0:
+            logger.info(f"Getting {len(missing_flights_in_db)} new flights for target group {target_group}...")
+            df_flights_to_get = df_all_flights[df_all_flights['flight_id'].isin(missing_flights_in_db)]
+            get_bereik(df_flights_to_get, target_group)
+        if len(flights_to_update) > 0:
+            logger.info(f"Updating {len(flights_to_update)} flights for target group {target_group}...")
+            df_flights_to_update = df_all_flights[df_all_flights['flight_id'].isin(flights_to_update)]
+            get_bereik(df_flights_to_update, target_group)
+
     except Exception as e:
         logger.error(f"Error updating data for target group {target_group}: {str(e)}")
 
-def process_target_group(raw_bereik_folder: str, target_group: str, df_all_flights: pd.DataFrame, is_mock: bool = False) -> None:
+def process_target_group(target_group: str, df_all_flights: pd.DataFrame) -> None:
     """
     Process data for a specific target group.
     """
-    # Create a subdirectory for mock campaigns if is_mock is True
-    directory_raw = os.path.join(raw_bereik_folder, target_group)
-    os.makedirs(directory_raw, exist_ok=True)
+    query = f"""SELECT DISTINCT flight_id, target_group, campaign_duration FROM [dbo].[tv.bereik] where target_group = '{target_group}'"""
+    bereik_data_tg = db_utils.query_to_df(query)
 
-    # Adjust the filename to include 'mock' if is_mock is True
-    filename_suffix = '_mock' if is_mock else ''
-    file_path = os.path.join(directory_raw, f"{target_group}_bereik_all_flights{filename_suffix}.xlsx")
-
-    if not os.path.exists(file_path):
-        print('Raw bereik folder does not exist. Creating...')
-        fetch_and_save_new_data(file_path, target_group, df_all_flights)
+    if bereik_data_tg is None or bereik_data_tg.empty:
+        logger.info(f"Collecting all data for new target group {target_group}...")
+        try:
+            get_bereik(df_all_flights, target_group)
+        except Exception as e:
+            logger.error(f"Error collecting data for new target group {target_group}: {str(e)}")
     else:
-        print(f'Raw bereik folder for target group {target_group} already exists. Updating...')
-        update_existing_data(file_path, target_group, df_all_flights)
+        logger.info(f"Updating flights for target group {target_group}...")
+        update_existing_data(target_group, df_all_flights, bereik_data_tg)
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv()
+
+    COLLECT_MOCKS = False
     args = parse_arguments()
 
-    all_flights_path = str(os.getenv('all_flights_path'))
-    all_mocks_path = str(os.getenv('all_mocks_path'))
-    raw_bereik_folder = str(os.getenv('raw_bereik_folder'))
-    df_all_flights = pd.read_excel(all_flights_path, dtype={'start_date': str, 'end_date': str})
+    # Read the entire flights table into a DataFrame
+    df_flights = db_utils.query_to_df('SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign FROM [dbo].[tv.flights]')
+    # Change date format for the API
+    df_flights['start_date'] = pd.to_datetime(df_flights['start_date']).dt.strftime("%d%m%y")
+    df_flights['end_date'] = pd.to_datetime(df_flights['end_date']).dt.strftime("%d%m%y")
+
+    if not COLLECT_MOCKS:
+        df_flights = df_flights[df_flights['mock_campaign'] == 0]
 
     total_target_groups = len(args.tg)
     for i, target_group in enumerate(args.tg, start=1):
         logger.info(f"Processing target group {target_group} ({i}/{total_target_groups})")
-        process_target_group(raw_bereik_folder, target_group, df_all_flights)
-
-    if COLLECT_MOCKS:
-        df_all_mocks = pd.read_excel(all_mocks_path, dtype={'start_date': str, 'end_date': str})
-        df_all_mocks = df_all_mocks[df_all_mocks['campaign_duration'] >= 6]
-        for i, target_group in enumerate(args.tg, start=1):
-            logger.info(f"Processing mock_campaigns for target group {target_group} ({i}/{total_target_groups})")
-            process_target_group(raw_bereik_folder, target_group, df_all_mocks, is_mock=True)
-
+        process_target_group(target_group, df_flights)
 
     logger.info("Raw bereik collected for all flights")

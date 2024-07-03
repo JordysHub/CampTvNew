@@ -6,6 +6,7 @@ import pandas as pd
 import os
 import argparse
 import json
+import time
 from icecream import ic
 from dotenv import load_dotenv
 from utils.logger import setup_logger
@@ -57,47 +58,9 @@ def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
 
     return df
 
-# def get_last_known_date_offline(root_folder) -> date:
-#     """
-#     Retrieve the last known date from local files
-#     """
-#     try:
-#         latest_year = max(os.listdir(root_folder))
-#         latest_month = max(os.listdir(os.path.join(root_folder, latest_year)))
-#         month_folder = os.path.join(root_folder, latest_year, latest_month)
-
-#         latest_file = None
-#         latest_date = None
-
-#         for file_name in os.listdir(month_folder):
-#             if file_name.endswith('.xlsx'):
-#                 file_path = os.path.join(month_folder, file_name)
-#                 file_date = os.path.getmtime(file_path)
-#                 if latest_date is None or file_date > latest_date:
-#                     latest_date = file_date
-#                     latest_file = file_name
-
-#         full_path = os.path.join(root_folder, latest_year, latest_month, os.path.splitext(latest_file)[0])
-#         folder_path = full_path.replace('\\', '/')
-#         parts = folder_path.split('/')
-
-#         year = parts[-3]
-#         month = parts[-2]
-#         day = parts[-1]
-
-#         date_str = f"{day}{month}{year}"
-#         date = datetime.strptime(date_str, '%d%m%Y')
-
-#     # return the default date if no files are found, so it will fetch from 01-09-23 and onwards
-#     except:
-#         default_date = datetime(2023, 8, 31)
-#         return default_date, ""
-
-#     return date, folder_path + '.xlsx'
-
 def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
     """
-    Call the camp bereik getter report API, retrieve the data for the specified target group, advertiser, product, start date, and end date, and return the result as a DataFrame. 
+    Call the camp bereik getter report API, retrieve the data for the specified target group, advertiser, product, start date, and end date, and return the result as a DataFrame.
     Advertiser and product aren't strictly nesssary, so the report can be called without these.
 
     Parameters:
@@ -140,7 +103,7 @@ def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, tok
     data = json.loads(res.text)[1]["Pivot"]["items"]
     if isinstance(data, list) and not data:
         df = pd.DataFrame()
-    else: 
+    else:
         df = pd.DataFrame(data)
 
     return df
@@ -157,7 +120,7 @@ def call_kdh_getter_report(day: str, token: str) -> pd.DataFrame:
             "Content-Type": "application/json",
         },
         json={
-            "report": "camp_kdh_getter",
+            "report": "Jordy_kdh_getter_nmo",
             "target": "10+",
             "period": f"{day}",
         },
@@ -165,20 +128,7 @@ def call_kdh_getter_report(day: str, token: str) -> pd.DataFrame:
 
     try:
         data = json.loads(res.text)[1]["Pivot"]["items"]
-        df = pd.DataFrame(data,
-                          columns=[
-                              "date",
-                              "advertiser",
-                              "product",
-                              "hour",
-                              "ster_id",
-                              "npo_1_grp",
-                              "npo_2_grp",
-                              "npo_3_grp",
-                              "ster_grp",
-                              "adalliance_grp",
-                              "talpa_grp",
-                              "total_grp"])
+        df = pd.DataFrame(data)
         assert not df.empty, logger.debug(f"DataFrame from API is empty for given day, {day}.")
 
     except (KeyError, IndexError, ValueError) as e:
@@ -186,3 +136,24 @@ def call_kdh_getter_report(day: str, token: str) -> pd.DataFrame:
         df = pd.DataFrame()
 
     return df
+
+def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs):
+    """
+    Retry a function with exponential backoff.
+
+    Parameters:
+        func (callable): The function to be retried.
+        retries (int): Number of retries.
+        initial_wait (int): Initial wait time between retries.
+        max_wait (int): Maximum wait time between retries.
+    """
+    wait = initial_wait
+    for attempt in range(retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt == retries - 1:
+                raise
+            time.sleep(wait)
+            wait = min(wait * 2, max_wait)

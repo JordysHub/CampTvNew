@@ -43,35 +43,27 @@ def get_bereik(index, row, target_group: str, token: str):
 
     return df
 
-def get_new_and_updated_flights(df_bereik: pd.DataFrame, df_all_flights: pd.DataFrame) -> set | set:
-    df_bereik = df_bereik.iloc[:, :5].drop_duplicates(subset=['flight_id'])
-    main_unique_ids = set(df_all_flights['flight_id'])
-    df_unique_ids = set(df_bereik['flight_id'])
+def get_new_and_updated_flights(bereik_data_tg: pd.DataFrame, df_all_flights: pd.DataFrame):
+    ### Get new flights
+    # Get unique flight IDs
+    unique_flight_ids = set(df_all_flights['flight_id'])
+    df_db_flight_ids = set(bereik_data_tg['flight_id'])
 
-    # get new flights
-    missing_flights_in_df = list(main_unique_ids - df_unique_ids)
+    # Identify new flights
+    missing_flights_in_db = list(unique_flight_ids - df_db_flight_ids)
 
-    # get updated flights
-    merged_df = pd.merge(df_bereik, df_all_flights, on=['flight_id', 'advertiser', 'product'], suffixes=('_old', '_all'))
-    filtered_df = merged_df[merged_df['end_date_all'] != merged_df['end_date_old']]
-    updated_flight_ids = filtered_df['flight_id'].tolist()
+    ### Get flights to update, based on campaign duration/
+    # Select distinct flight_ids and campaign_duration from bereik_data_tg
+    df_bereik_in_db_unique = bereik_data_tg[['flight_id', 'campaign_duration']].drop_duplicates()
 
-    combined_flight_ids = missing_flights_in_df + updated_flight_ids
-    combined_flight_ids = set(combined_flight_ids)
+    # Select flight_id and campaign_duration from df_all_flights
+    df_all_flights_filtered = df_all_flights[['flight_id', 'campaign_duration']].drop_duplicates()
 
-    # get flights that are in the df_bereik but not in the df_all_flights (possible changed in edge)
-    extra_flights_in_df = df_unique_ids - main_unique_ids
-    logger.debug("extra_flights_in_df: " + str(extra_flights_in_df))
+    # Identify updated flights by comparing campaign_duration values
+    merged_df = pd.merge(df_bereik_in_db_unique, df_all_flights_filtered, on='flight_id', suffixes=('_db', '_all'))
+    flights_to_update = merged_df[merged_df['campaign_duration_db'] != merged_df['campaign_duration_all']]['flight_id'].tolist()
 
-    return combined_flight_ids, extra_flights_in_df
-
-def fetch_all_data_new_tg(df_all_flights, target_group, file_path):
-    logger.info(f"Fetching all data for new target group {target_group}...")
-    try:
-        df_bereik = get_bereik(df_all_flights, target_group)
-        df_bereik.to_excel(file_path, index=False)
-    except Exception as e:
-        logger.error(f"Error fetching data for new target group {target_group}: {str(e)}")
+    return missing_flights_in_db, flights_to_update
 
 def convert_to_list(string):
     try:
@@ -98,10 +90,19 @@ def process_row(row):
         new_row[column_name] = float(value)
     return new_row
 
+def ensure_columns(df, column_order):
+    # Add missing columns with default value 0
+    for col in column_order:
+        if col not in df.columns:
+            df[col] = 0
+
+    # Reorder columns according to column_order
+    df = df[column_order]
+    return df
 
 def change_column_order(df):
 
-    column_order = ['flight_id', 'start_date', 'end_date', 'campaign_duration', 'advertiser', 'product', 'daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
+    column_order = ['flight_id', 'target_group', 'campaign_duration','daypart', 'total_grp', 'ster_grp', 'regio_grp', 'talpa_grp', 'adalliance_grp',
                     'npo1_grp', 'npo2_grp', 'npo3_grp',
                     'npo1_1+', 'npo2_1+', 'npo3_1+',
                     'npo1_2+', 'npo2_2+', 'npo3_2+',
@@ -114,11 +115,28 @@ def change_column_order(df):
                     'npo1_9+', 'npo2_9+', 'npo3_9+',
                     'npo1_10+', 'npo2_10+', 'npo3_10+',
                     'regio_1+', 'regio_2+', 'regio_3+', 'regio_4+', 'regio_5+', 'regio_6+', 'regio_7+', 'regio_8+', 'regio_9+', 'regio_10+',
-                    'ster_1+', 'ster_2+', 'ster_3+', 'ster_4+', 'ster_5+', 'ster_6+', 'ster_7+', 'ster_8+', 'ster_9+', 'ster_10+']
+                    'ster_1+', 'ster_2+', 'ster_3+', 'ster_4+', 'ster_5+', 'ster_6+', 'ster_7+', 'ster_8+', 'ster_9+', 'ster_10+',
+                    'talpa_1+', 'talpa_2+', 'talpa_3+', 'talpa_4+', 'talpa_5+', 'talpa_6+', 'talpa_7+', 'talpa_8+', 'talpa_9+', 'talpa_10+',
+                    'adalliance_1+', 'adalliance_2+', 'adalliance_3+', 'adalliance_4+', 'adalliance_5+', 'adalliance_6+', 'adalliance_7+', 'adalliance_8+', 'adalliance_9+', 'adalliance_10+',
+                    'total_1+', 'total_2+', 'total_3+', 'total_4+', 'total_5+', 'total_6+', 'total_7+', 'total_8+', 'total_9+', 'total_10+']
 
-    return df[column_order]
+    df = ensure_columns(df, column_order)
+
+    return df
 
 def calculate_campaign_duration(row):
     start_date = pd.to_datetime(row['start_date'], format='%d%m%y')
     end_date = pd.to_datetime(row['end_date'], format='%d%m%y')
     return (end_date - start_date).days + 1
+
+def process_raw_bereik_data(df_bereik_raw, target_group):
+    # Process raw data from api
+    processed_rows = [process_row(row) for _, row in df_bereik_raw.iterrows()]
+    processed_df = pd.DataFrame(processed_rows).fillna(0)
+    # Calculate campaign duration
+    processed_df['campaign_duration'] = processed_df.apply(lambda row: calculate_campaign_duration(row), axis=1)
+    # Change column order
+    processed_df['target_group'] = target_group
+    processed_df = change_column_order(processed_df)
+
+    return processed_df
