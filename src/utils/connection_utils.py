@@ -22,10 +22,3 @@ def create_sql_alchemy_engine():
     engine = create_engine(alchemy_con)
 
     return engine
-
-def execute_query_to_df(query):
-    engine = create_sql_alchemy_engine()
-    SQL_Query = pd.read_sql_query(query, engine)
-    df = pd.DataFrame(SQL_Query)
-
-    return df

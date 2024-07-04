@@ -1,6 +1,5 @@
-import camp_tv_new.src.utils.dictionaries as dict
 import camp_tv_new.src.utils.api_utils as api_utils
-from camp_tv_new.src.utils.logger import setup_logger
+from camp_tv_new.src.utils.logger import setup_logger, log_warning_to_excel
 
 import ast
 import pandas as pd
@@ -33,7 +32,8 @@ def get_bereik(index, row, target_group: str, token: str):
 
     df = api_utils.call_bereik_report_tv(target_group, start_date, end_date, token, advertiser, product)
     if df.empty is True:
-        logger.warning(f"Skipping row due to df being empty, for flight {flight_id}, advertiser {advertiser}, product {product}, start_date {start_date}, end_date {end_date}")
+        # logger.warning(f"Skipping row due to df being empty, for flight {flight_id}, advertiser {advertiser}, product {product}, start_date {start_date}, end_date {end_date}")
+        log_warning_to_excel(flight_id, advertiser, product, start_date, end_date)
         return pd.DataFrame()
 
     df.rename(columns={0: 'advertiser', 1: 'product', 2: 'daypart'}, inplace=True)
@@ -42,28 +42,6 @@ def get_bereik(index, row, target_group: str, token: str):
     df.insert(2, "end_date", str(end_date))
 
     return df
-
-def get_new_and_updated_flights(bereik_data_tg: pd.DataFrame, df_all_flights: pd.DataFrame):
-    ### Get new flights
-    # Get unique flight IDs
-    unique_flight_ids = set(df_all_flights['flight_id'])
-    df_db_flight_ids = set(bereik_data_tg['flight_id'])
-
-    # Identify new flights
-    missing_flights_in_db = list(unique_flight_ids - df_db_flight_ids)
-
-    ### Get flights to update, based on campaign duration/
-    # Select distinct flight_ids and campaign_duration from bereik_data_tg
-    df_bereik_in_db_unique = bereik_data_tg[['flight_id', 'campaign_duration']].drop_duplicates()
-
-    # Select flight_id and campaign_duration from df_all_flights
-    df_all_flights_filtered = df_all_flights[['flight_id', 'campaign_duration']].drop_duplicates()
-
-    # Identify updated flights by comparing campaign_duration values
-    merged_df = pd.merge(df_bereik_in_db_unique, df_all_flights_filtered, on='flight_id', suffixes=('_db', '_all'))
-    flights_to_update = merged_df[merged_df['campaign_duration_db'] != merged_df['campaign_duration_all']]['flight_id'].tolist()
-
-    return missing_flights_in_db, flights_to_update
 
 def convert_to_list(string):
     try:

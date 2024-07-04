@@ -3,6 +3,7 @@ from time import time
 from colorlog import ColoredFormatter
 from datetime import datetime
 import os
+import pandas as pd
 
 def setup_logger(base_log_path="logs/", console_logging=True):
     # Create logger instance
@@ -89,3 +90,36 @@ def timer_func(func):
         return result
 
     return wrap_func
+
+def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, file_path='warnings.xlsx'):
+    # Create a dictionary for the new row
+    new_row = {
+        'flight_id': flight_id,
+        'advertiser': advertiser,
+        'product': product,
+        'start_date': start_date,
+        'end_date': end_date
+    }
+
+    new_df = pd.DataFrame([new_row])
+
+   # Check if the file exists
+    if os.path.exists(file_path):
+        # Load existing data
+        df_existing = pd.read_excel(file_path)
+
+        # Check if the flight_id already exists
+        if not df_existing[df_existing['flight_id'] == flight_id].empty:
+            print(f"Row already exists for flight {flight_id}")
+            return
+
+        # Append new row to the existing dataframe
+        df_existing = pd.concat([df_existing, new_df], ignore_index=True)
+
+    else:
+        # If file does not exist, use the new dataframe as the dataframe to be saved
+        df_existing = new_df
+
+    # Save the dataframe to the Excel file
+    df_existing.to_excel(file_path, index=False)
+    print(f"Logged warning for flight {flight_id}")

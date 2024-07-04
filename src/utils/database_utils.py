@@ -3,8 +3,7 @@ from camp_tv_new.src.utils.logger import setup_logger, timer_func
 
 import pandas as pd
 from sqlalchemy import delete, text
-from sqlalchemy.sql import table, column
-from sqlalchemy.sql.expression import bindparam
+
 
 logger = setup_logger()
 def dump_to_sql(
@@ -90,7 +89,7 @@ def query_to_df(query):
 
     return df_query
 
-def delete_flights(list_of_flights, table_name):
+def delete_flights(list_of_flights, table_name, target_group):
     try:
         # Connect to the database
         engine = con_utils.create_sql_alchemy_engine()
@@ -101,6 +100,7 @@ def delete_flights(list_of_flights, table_name):
         sql_delete = f"""
         DELETE FROM [dbo].{table_name}
         WHERE flight_id IN {list_of_flights}
+        AND target_group = '{target_group}'
         """
 
         with engine.connect() as connection:
@@ -117,7 +117,7 @@ def delete_flights(list_of_flights, table_name):
                     logger.error(f"Error deleting flights: {e}")
                     raise
 
-        logger.info("Flights deleted successfully.")
+        logger.info(f"{len(list_of_flights)} flights deleted successfully.")
 
     except Exception as e:
         logger.error(f"Error deleting flights: {e}")

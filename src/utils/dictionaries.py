@@ -1,10 +1,12 @@
 from datetime import datetime, date
 
-target_groups = ['25-67', 'B2B', '20-49', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+',
-                 '7-12', 'BDS 25-59', 'BDS 25-67', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1',
-                 'BDS KZ12', 'BDS+KND', 'DAG 25-59', 'M 20-49', 'M 25-54', 'M 25-59',
-                 'M 25-67', 'M 50+', 'V 20-49', 'V 25-54', 'V 25-59', 'V 25-67', 'V 40+',
-                 'V 50+', 'W1 45-75']
+# target_groups = ['25-67', 'B2B', '20-49', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+',
+#                  '7-12', 'BDS25-59', 'BDS25-67', '13+', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67AB1',
+#                  'BDS KZ12', 'BDS+KND', 'DAG25-59', 'M20-49', 'M25-54', 'M25-59',
+#                  'M25-67', 'M50+', 'V20-49', 'V 25-54', 'V 25-59', 'V25-67', 'V40+',
+#                  'V50+', 'W145-75']
+#
+target_groups = ['25-67', 'B2B', '20-49', '3-12', '30-65', '35+', '35-59', '35-64', 'V 25-54', 'V 25-59', 'V25-67', 'V40+']
 
 rename_dict = {
     'BDS25-59': 'BDS 25-59',
@@ -97,12 +99,3 @@ olympic_period_list = [[date(2024, 7, 26), date(2024, 8, 11)],
 football_wk_ek_list = [[date(2022, 11, 20), date(2022, 12, 18)],
                        [date(2024, 6, 14), date(2024, 7, 14)],
                        [date(2026, 6, 11), date(2026, 7, 19)]]
-
-
-
-queries = {
-    "spots": """SELECT * FROM [tv_raw].[spots] WHERE date >= ? AND date <= ?""",
-    "spots_lastdate": """SELECT MAX(date) AS last_date FROM [tv_raw].[spots]""",
-    "spots_all_dates": """"SELECT DISTINCT date FROM [dbo].[tv.spots]""",
-    "flights": """SELECT * FROM [tv_raw].[flights]""",
-}

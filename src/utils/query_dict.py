@@ -1,0 +1,104 @@
+query_dict = {
+    'get_flights': '''
+        SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights]''',
+    'get_bereik':
+        '''SELECT flight_id, target_group, campaign_duration, daypart FROM [dbo].[tv.bereik] WHERE target_group = :target_group''',
+
+    'get_flights_with_duration_mismatch': '''
+            SELECT f.flight_id, f.advertiser, f.product, f.start_date, f.end_date, f.campaign_duration, f.mock_campaign
+            FROM [dbo].[tv.flights] f
+            INNER JOIN [dbo].[tv.bereik] b ON f.flight_id = b.flight_id
+            WHERE f.campaign_duration <> b.campaign_duration
+            AND b.target_group = :target_group
+        ''',
+
+    'get_missing_flights': '''
+        SELECT tg.target_group, f.flight_id
+        FROM (
+            VALUES :target_group
+        ) AS tg(target_group)
+        CROSS JOIN [dbo].[tv.flights] f
+        LEFT JOIN [dbo].[tv.bereik] b ON b.flight_id = f.flight_id AND b.target_group = tg.target_group
+        WHERE b.flight_id IS NULL
+          AND f.mock_campaign = :mock_campaign
+    ''',
+
+    'collect_mock_flights': '''
+    SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp
+    FROM [dbo].[tv.flights]
+    WHERE mock_campaign = 1
+    '''
+
+}
+
+
+
+
+
+
+
+
+"""
+CREATE TABLE #temp_results (
+    flight_id VARCHAR(50),
+    target_group VARCHAR(50),
+    campaign_duration INT,
+    daypart VARCHAR(50)
+);
+
+-- Step 2: Declare a list of target groups
+DECLARE @target_groups TABLE (target_group VARCHAR(50));
+
+-- Insert your target groups into the table variable
+INSERT INTO @target_groups (target_group)
+VALUES ('25-67'), ('B2B'), ('20-49'), ('3-12'), ('30-65'), ('35+'),
+        ('35-59'), ('35-64'), ('50+'), ('6+'), ('68+'), ('7-12'),
+        ('BDS 25-59'), ('BDS 25-67'), ('13+'), ('25+'), ('25-39'),
+        ('25-54'), ('25-59'), ('25-59AB1'), ('25-67AB1'), ('BDS KZ12'),
+        ('BDS+KND'), ('DAG 25-59'), ('M 20-49'), ('M 25-54'), ('M 25-59'),
+        ('M 25-67'), ('M 50+'), ('V 20-49'), ('V 25-54'), ('V 25-59'),
+        ('V 25-67'), ('V 40+'), ('V 50+'), ('W1 45-75')
+
+-- Step 3: Loop through each target group and insert the results into the temporary table
+DECLARE @current_group VARCHAR(50);
+
+DECLARE group_cursor CURSOR FOR
+SELECT target_group FROM @target_groups;
+
+OPEN group_cursor;
+FETCH NEXT FROM group_cursor INTO @current_group;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    DECLARE @sql NVARCHAR(MAX);
+    SET @sql = N'
+    INSERT INTO #temp_results (flight_id, target_group, campaign_duration, daypart)
+    SELECT flight_id, target_group, campaign_duration, daypart
+    FROM [dbo].[tv.bereik]
+    WHERE target_group = @current_group
+    AND flight_id IN (
+        SELECT flight_id
+        FROM [dbo].[tv.bereik]
+        WHERE target_group = @current_group
+        GROUP BY flight_id
+        HAVING COUNT(*) > 3
+    );';
+
+    EXEC sp_executesql @sql, N'@current_group VARCHAR(50)', @current_group;
+
+    FETCH NEXT FROM group_cursor INTO @current_group;
+END;
+
+CLOSE group_cursor;
+DEALLOCATE group_cursor;
+
+-- Step 4: Select all results from the temporary table
+SELECT * FROM #temp_results;
+
+-- Step 5: Drop the temporary table
+DROP TABLE #temp_results;
+
+
+
+
+"""

@@ -4,14 +4,13 @@
 import camp_tv_new.src.utils.bereik_utils as bereik_utils
 import camp_tv_new.src.utils.api_utils as api_utils
 import camp_tv_new.src.utils.database_utils as db_utils
-import camp_tv_new.src.utils.connection_utils as con_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.dictionaries as mydict
+from camp_tv_new.src.utils.query_dict import query_dict
 
 import pandas as pd
 import time
 from tqdm import tqdm
-import os
 import argparse
 import time
 
@@ -55,73 +54,88 @@ def get_bereik(df_flights, target_group: str):
         try:
             # Fetch data, preprocess and dump to sql
             df = api_utils.retry_with_exponential_backoff(fetch_bereik)
-            processed_df = bereik_utils.process_raw_bereik_data(df, target_group)
-            db_utils.dump_to_sql(processed_df, 'tv.bereik')
+            if df is not None and not df.empty:
+                processed_df = bereik_utils.process_raw_bereik_data(df, target_group)
+                db_utils.dump_to_sql(processed_df, 'tv.bereik')
 
         except Exception as e:
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
 
-def update_existing_data(target_group: str, df_all_flights: pd.DataFrame, bereik_data_tg: pd.DataFrame) -> None:
-    """
-    Update existing data for a target group.
-    """
+def execute_query_to_df(query_key, params=None):
+    if query_key not in query_dict:
+        raise ValueError(f"Query key '{query_key}' not found in query_dict.")
+
+    query = query_dict[query_key]
+
+    if params:
+        for key, value in params.items():
+            query = query.replace(f':{key}', str(value))
+
     try:
-        # Step 1: Get flights that need to be updated and are new
-        missing_flights_in_db, flights_to_update = bereik_utils.get_new_and_updated_flights(bereik_data_tg, df_all_flights)
-        print(len(flights_to_update), len(missing_flights_in_db))
-
-        # Step 2: Delete flights from db that need to be updated
-        if len(flights_to_update) > 0:
-            logger.info(f"Deleteting {len(flights_to_update)} flights from db to update")
-            db_utils.delete_flights(flights_to_update, table_name = '[tv.bereik]')
-
-        # Step 3: Get new flights for target group and update existing flights
-        if len(missing_flights_in_db) > 0:
-            logger.info(f"Getting {len(missing_flights_in_db)} new flights for target group {target_group}...")
-            df_flights_to_get = df_all_flights[df_all_flights['flight_id'].isin(missing_flights_in_db)]
-            get_bereik(df_flights_to_get, target_group)
-        if len(flights_to_update) > 0:
-            logger.info(f"Updating {len(flights_to_update)} flights for target group {target_group}...")
-            df_flights_to_update = df_all_flights[df_all_flights['flight_id'].isin(flights_to_update)]
-            get_bereik(df_flights_to_update, target_group)
-
+        df = db_utils.query_to_df(query)
+        if df is not None and not df.empty:
+            return df
+        else:
+            return pd.DataFrame()
     except Exception as e:
-        logger.error(f"Error updating data for target group {target_group}: {str(e)}")
+        logger.error(f"Error executing query: {str(e)}")
 
-def process_target_group(target_group: str, df_all_flights: pd.DataFrame) -> None:
-    """
-    Process data for a specific target group.
-    """
-    query = f"""SELECT DISTINCT flight_id, target_group, campaign_duration FROM [dbo].[tv.bereik] where target_group = '{target_group}'"""
-    bereik_data_tg = db_utils.query_to_df(query)
+def retrieve_and_format_flights(query_key):
+    df = db_utils.query_to_df(query_dict[query_key])
+    df['start_date'] = pd.to_datetime(df['start_date']).dt.strftime("%d%m%y")
+    df['end_date'] = pd.to_datetime(df['end_date']).dt.strftime("%d%m%y")
+    return df
 
-    if bereik_data_tg is None or bereik_data_tg.empty:
-        logger.info(f"Collecting all data for new target group {target_group}...")
-        try:
-            get_bereik(df_all_flights, target_group)
-        except Exception as e:
-            logger.error(f"Error collecting data for new target group {target_group}: {str(e)}")
-    else:
-        logger.info(f"Updating flights for target group {target_group}...")
-        update_existing_data(target_group, df_all_flights, bereik_data_tg)
+def process_missing_flights(target_groups, df_flights, mock_campaign):
+    for tg in target_groups:
+        params = {'target_group': f"('{tg}')", 'mock_campaign': mock_campaign}
+        df_missing_tg = execute_query_to_df('get_missing_flights', params)
+
+        if df_missing_tg is not None and not df_missing_tg.empty:
+            logger.info(f"{len(df_missing_tg)} missing flights for target group {tg} with COLLECT_MOCKS = {mock_campaign}:")
+            filtered_flights_tg = df_flights[df_flights['flight_id'].isin(df_missing_tg['flight_id'])]
+            get_bereik(filtered_flights_tg, tg)
+        else:
+            logger.info(f"No missing flights found for target group {tg} with COLLECT_MOCKS = {mock_campaign}.")
+
+def update_running_flights(target_groups, df_flights):
+    for tg in target_groups:
+        params = {'target_group': f"('{tg}')"}
+        df_duration_mismatch = execute_query_to_df('get_flights_with_duration_mismatch', params=params)
+
+        if df_duration_mismatch is not None and not df_duration_mismatch.empty:
+            logger.info(f"{len(df_duration_mismatch)} need an update")
+            list_of_flights = df_duration_mismatch['flight_id'].unique().tolist()
+            db_utils.delete_flights(list_of_flights, '[tv.bereik]', tg)
+
+            filtered_flights_tg = df_flights[df_flights['flight_id'].isin(df_duration_mismatch['flight_id'])]
+            get_bereik(filtered_flights_tg, tg)
 
 if __name__ == "__main__":
+    COLLECT_MOCKS = True
+    STER_FLIGHTS_ONLY = True
 
-    COLLECT_MOCKS = False
+    # Step 1: Retrieve flights data and format dates
+    df_flights = retrieve_and_format_flights('get_flights')
+
+    if STER_FLIGHTS_ONLY:
+        df_flights = df_flights[df_flights['ster_grp'] > 0]
+
+    # Step 2: Parse command line arguments
     args = parse_arguments()
+    target_groups = args.tg if args.tg else mydict.target_groups
 
-    # Read the entire flights table into a DataFrame
-    df_flights = db_utils.query_to_df('SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign FROM [dbo].[tv.flights]')
-    # Change date format for the API
-    df_flights['start_date'] = pd.to_datetime(df_flights['start_date']).dt.strftime("%d%m%y")
-    df_flights['end_date'] = pd.to_datetime(df_flights['end_date']).dt.strftime("%d%m%y")
+    # Step 3: Retrieve missing flights for each target group and process
+    process_missing_flights(target_groups, df_flights, mock_campaign=0)
 
-    if not COLLECT_MOCKS:
-        df_flights = df_flights[df_flights['mock_campaign'] == 0]
+    # Step 4: Retrieve flights with duration mismatch that need to be updated
+    update_running_flights(target_groups, df_flights)
 
-    total_target_groups = len(args.tg)
-    for i, target_group in enumerate(args.tg, start=1):
-        logger.info(f"Processing target group {target_group} ({i}/{total_target_groups})")
-        process_target_group(target_group, df_flights)
+    # Step 5: Collect mock flights
+    if COLLECT_MOCKS:
+        df_flights_mock = retrieve_and_format_flights('collect_mock_flights')
 
-    logger.info("Raw bereik collected for all flights")
+        if STER_FLIGHTS_ONLY:
+            df_flights_mock = df_flights_mock[df_flights_mock['ster_grp'] > 0]
+
+        process_missing_flights(target_groups, df_flights_mock, mock_campaign=1)
