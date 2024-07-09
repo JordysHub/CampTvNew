@@ -3,6 +3,12 @@ query_dict = {
         SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights]''',
     'get_bereik':
         '''SELECT flight_id, target_group, campaign_duration, daypart FROM [dbo].[tv.bereik] WHERE target_group = :target_group''',
+    'get_bereik_model':'''
+        SELECT b.flight_id, f.start_date, f.end_date, b.target_group, b.campaign_duration, b.daypart, b.total_grp, b.ster_grp, b.regio_grp, b.npo1_grp, b.npo2_grp, b.npo3_grp, b.[ster_1+]
+        FROM [dbo].[tv.bereik] b
+        LEFT JOIN [dbo].[tv.flights] f ON b.flight_id = f.flight_id
+        where b.ster_grp > 0 and target_group = :target_group and start_date >= :start_date and end_date <= :end_date
+        ''',
 
     'get_flights_with_duration_mismatch': '''
             SELECT f.flight_id, f.advertiser, f.product, f.start_date, f.end_date, f.campaign_duration, f.mock_campaign
@@ -20,7 +26,8 @@ query_dict = {
         CROSS JOIN [dbo].[tv.flights] f
         LEFT JOIN [dbo].[tv.bereik] b ON b.flight_id = f.flight_id AND b.target_group = tg.target_group
         WHERE b.flight_id IS NULL
-          AND f.mock_campaign = :mock_campaign
+        AND f.mock_campaign = :mock_campaign
+        AND f.ster_grp {ster_grp_condition}
     ''',
 
     'collect_mock_flights': '''
@@ -39,6 +46,9 @@ query_dict = {
 
 
 """
+IF OBJECT_ID('tempdb..#temp_results') IS NOT NULL
+    DROP TABLE #temp_results;
+
 CREATE TABLE #temp_results (
     flight_id VARCHAR(50),
     target_group VARCHAR(50),
@@ -97,8 +107,5 @@ SELECT * FROM #temp_results;
 
 -- Step 5: Drop the temporary table
 DROP TABLE #temp_results;
-
-
-
 
 """

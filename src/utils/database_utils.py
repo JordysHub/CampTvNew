@@ -10,7 +10,7 @@ def dump_to_sql(
     df,
     table_name,
     schema = 'dbo',
-    if_exists= 'append',
+    if_exists = 'append',
     index=False,
     method="multi",
     chunksize=50,
@@ -89,7 +89,7 @@ def query_to_df(query):
 
     return df_query
 
-def delete_flights(list_of_flights, table_name, target_group):
+def delete_flights(list_of_flights, table_name, target_group = None):
     try:
         # Connect to the database
         engine = con_utils.create_sql_alchemy_engine()
@@ -100,8 +100,10 @@ def delete_flights(list_of_flights, table_name, target_group):
         sql_delete = f"""
         DELETE FROM [dbo].{table_name}
         WHERE flight_id IN {list_of_flights}
-        AND target_group = '{target_group}'
         """
+
+        if target_group is not None:
+            sql_delete += f" AND target_group = '{target_group}'"
 
         with engine.connect() as connection:
             # Begin a transaction

@@ -1,5 +1,6 @@
 import camp_tv_new.src.utils.api_utils as api_utils
 from camp_tv_new.src.utils.logger import setup_logger, log_warning_to_excel
+import camp_tv_new.src.utils.dictionaries as mydict
 
 import ast
 import pandas as pd
@@ -114,6 +115,7 @@ def process_raw_bereik_data(df_bereik_raw, target_group):
     # Calculate campaign duration
     processed_df['campaign_duration'] = processed_df.apply(lambda row: calculate_campaign_duration(row), axis=1)
     # Change column order
+    target_group = mydict.rename_dict.get(target_group, target_group)
     processed_df['target_group'] = target_group
     processed_df = change_column_order(processed_df)
 

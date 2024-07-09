@@ -187,9 +187,30 @@ def update_flights(df_flights_old, df_flights_new):
 
     return df_flights_updated, df_flights_new_unique
 
+def kansspel_alcohol_adv(df):
+
+    df['hour'] = pd.to_datetime(df['hour'], format='%H:%M:%S')
+    # Group the DataFrame by advertiser or product
+    grouped_df = df.groupby(['advertiser', 'product'])
+    # Filter the groups to only include those where all campaigns aired between 21:00 and 02:00
+    filtered_groups = grouped_df.filter(lambda x: all((x['hour'].dt.hour >= 21) | (x['hour'].dt.hour <= 2)))
+
+    # Mark filtered campaigns with 'kansspel_alcohol' as True
+    filtered_groups['alcohol_kansspel'] = True
+    # Merge filtered_groups with original dataframe
+    merged_df = pd.merge(df, filtered_groups, how='left')
+
+    # Fill NaN values in 'kansspel_alcohol' column with False
+    merged_df['alcohol_kansspel'] = merged_df['alcohol_kansspel'].fillna(False)
+
+    # drop hour column
+    merged_df = merged_df.drop(columns=['hour'])
+
+    return merged_df
+
 ############ MOCK FLIGHTS ################
 
-def create_mock_campaigns(df_flights, min_days_gap=2, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.9, max_mock_campaigns=20, max_attempts=100, min_mock_duration=1):
+def create_mock_campaigns(df_flights, min_days_gap=4, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.8, max_mock_campaigns=20, max_attempts=100, min_mock_duration=1):
     new_mock_campaigns = []
     df_flights['start_date'] = pd.to_datetime(df_flights['start_date'], format='%d%m%y')
     df_flights['end_date'] = pd.to_datetime(df_flights['end_date'], format='%d%m%y')

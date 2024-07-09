@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
-import os
-from utils.logger import setup_logger, timer_func
+from camp_tv_new.src.utils import api_utils
+from camp_tv_new.src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.flights_utils as fu
 import camp_tv_new.src.utils.database_utils as db_utils
+from camp_tv_new.src.utils.alcohol_kansspelen import calculate_alcohol_kansspelen
+
 
 logger = setup_logger()
 
@@ -28,7 +30,7 @@ def finalize_flights(df_flights: pd.DataFrame, data_type: str):
     return df_flights
 
 def create_flights_from_spots(df_spots: pd.DataFrame):
-    logger.info("Creating flights from spots...")
+    logger.debug("Creating flights from spots...")
     df_flights = preprocess_flights(df_spots)
     df_flights = finalize_flights(df_flights, data_type='flight')
     return df_flights
@@ -40,34 +42,38 @@ def create_mocks_from_flights(df_flights: pd.DataFrame, df_spots: pd.DataFrame):
     mock_campaigns_df = finalize_flights(mock_campaigns_df, data_type='mock')
     return mock_campaigns_df
 
+
 if __name__ == "__main__":
+    CREATE_MOCKS = False
     table_name = "tv.flights"
 
     # Read the entire table into a DataFrame
-    query = 'SELECT * FROM [dbo].[tv.spots]'
-    df_spots = db_utils.query_to_df(query)
+    df_spots = db_utils.query_to_df('SELECT * FROM [dbo].[tv.spots]')
 
     # Create flights from spots
     df_flights = create_flights_from_spots(df_spots)
+    # Calculate alcohol kansspelen for these flights
+    logger.debug("Calculate alcohol kansspelen...")
+    df_flights = calculate_alcohol_kansspelen(df_flights)
     # Get a list of unique flight IDs to delete, in order to dump the new (updated) flights
     list_of_flights_to_delete = df_flights['flight_id'].unique().tolist()
     # Delete existing normal flights from the database
-    if list_of_flights_to_delete:
-        db_utils.delete_flights(list_of_flights_to_delete, '[tv.flights]')
+    db_utils.delete_flights(list_of_flights_to_delete, '[tv.flights]')
+    db_utils.dump_to_sql(df_flights, table_name=table_name)
 
-    if df_flights.shape[0] == 0:
-        logger.info(f"No new rows to insert for {table_name}")
-    else:
-        logger.info(f"Number of rows to insert for {table_name}: {df_flights.shape[0]}")
-        db_utils.dump_to_sql(df_flights, table_name=table_name)
+    # delete flights that can't be find in Edge (wrong advertiser/product combi)
+    df_flights_to_delete = pd.read_excel('././warnings.xlsx')
+    flights_to_delete = df_flights_to_delete['flight_id'].tolist()
+    db_utils.delete_flights(flights_to_delete, '[tv.flights]')
 
-    # Create mocks from flights
-    df_mocks = create_mocks_from_flights(df_flights, df_spots)
-    # Check existing primary keys
-    df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
+    if CREATE_MOCKS:
+        # Create mocks from flights
+        df_mocks = create_mocks_from_flights(df_flights, df_spots)
+        # Check existing primary keys
+        df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
 
-    if df_mocks_to_insert.shape[0] == 0:
-        logger.info(f"No new rows to insert for {table_name}")
-    else:
-        logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
-        db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)
+        if df_mocks_to_insert.shape[0] == 0:
+            logger.info(f"No new rows to insert for {table_name}")
+        else:
+            logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
+            db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)

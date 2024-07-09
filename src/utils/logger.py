@@ -110,7 +110,6 @@ def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, f
 
         # Check if the flight_id already exists
         if not df_existing[df_existing['flight_id'] == flight_id].empty:
-            print(f"Row already exists for flight {flight_id}")
             return
 
         # Append new row to the existing dataframe

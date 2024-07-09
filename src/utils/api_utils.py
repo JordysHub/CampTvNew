@@ -34,9 +34,6 @@ def valid_date(s):
         raise argparse.ArgumentTypeError(msg)
 
 def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
-    rename_targetgroup = {'V25-67': 'V 25-67',
-                          'M25-67': 'M 25-67'}
-    target_group = rename_targetgroup.get(target_group, target_group)
 
     dict_call = {
         "target": target_group,
@@ -108,10 +105,20 @@ def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, tok
 
     return df
 
-def call_kdh_getter_report(day: str, token: str) -> pd.DataFrame:
+def call_kdh_getter_report(day: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
     """
     Call the kdh (kijkdichtheid) getter report for tv. The call is made per day for all spots in this script.
     """
+    if advertiser is not None:
+        if product is not None:
+            filter_text = f"Holland::Adverteerder::{advertiser}&&product::{product}"
+        else:
+            filter_text = f"Holland::Adverteerder::{advertiser}"
+    elif product is not None:
+        filter_text = f"product::{product}"
+    else:
+        filter_text = None
+
     # transform period day to string in DDMMYY format
     res = requests.post(
         "https://sternl.iea.grouptechedge.com/api/advantedge",
@@ -123,6 +130,7 @@ def call_kdh_getter_report(day: str, token: str) -> pd.DataFrame:
             "report": "Jordy_kdh_getter_nmo",
             "target": "10+",
             "period": f"{day}",
+            "filtertext": filter_text,
         },
     )
 
@@ -136,6 +144,8 @@ def call_kdh_getter_report(day: str, token: str) -> pd.DataFrame:
         df = pd.DataFrame()
 
     return df
+
+
 
 def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs):
     """

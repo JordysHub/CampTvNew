@@ -3,16 +3,13 @@
 
 # region imports and warnings
 import camp_tv_new.src.utils.api_utils as api_utils
+import camp_tv_new.src.utils.dictionaries as mydict
+from camp_tv_new.src.utils.logger import setup_logger
+import camp_tv_new.src.utils.database_utils as db_utils
 
 from dotenv import load_dotenv
-from camp_tv_new.src.utils.logger import setup_logger, timer_func
-
 import pandas as pd
-import warnings
 
-pd.set_option('future.no_silent_downcasting', True)
-warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
-warnings.simplefilter(action='ignore', category=FutureWarning)
 # endregion
 
 # Load environment variables: determines whether to retrieve data exclusively from Ster/NPO.
@@ -23,26 +20,37 @@ logger = setup_logger()
 def calculate_pop(df):
     df.iloc[:, 1:] = df.iloc[:, 1:].apply(
         lambda x: x.apply(lambda x: float(str(x[-1]))), axis=1)
+
     population = (100 / df.iloc[0, 1]) * (1000 * df.iloc[0, 2])
     population = round(population / 1000) * 1000
 
-    return population
+    return int(population)
 
-# '30-60EH', '35-59AB1'
+def fetch_and_process_data(target_groups, token):
+    pop_dict = {}
+
+    for tg in target_groups:
+        try:
+            df = api_utils.call_pop_report_tv(tg, token)
+            pop_dict[tg] = calculate_pop(df)
+        except Exception as e:
+            print(f"Error processing target group {tg}: {e}")
+
+    return pop_dict
+
+def main():
+    target_groups = mydict.target_groups
+    token = api_utils.get_api_token()
+
+    pop_dict = fetch_and_process_data(target_groups, token)
+    df_pop = pd.DataFrame.from_dict(pop_dict, orient='index', columns=['population']).reset_index()
+    df_pop.columns = ['target_group', 'population']
+    df_pop['target_group'] = df_pop['target_group'].replace(mydict.rename_dict)
+    df_pop['target_group'] = df_pop['target_group'].astype(str)
+    df_pop['population'] = df_pop['population'].astype(int)
+
+    db_utils.dump_to_sql(df_pop, 'tv.population')
+    print(df_pop)
 
 if __name__ == "__main__":
-    pop_dict = {}
-    target_groups = ['13+', '20-49', '25+', '25-39', '25-54', '25-59', '25-59AB1', '25-67',
-                     '25-67AB1', '3-12', '30-65', '35+', '35-59', '35-64', '50+', '6+', '68+', 
-                     '7-12', 'BDS 25-59', 'BDS 25-67', 'B2B',
-                     'BDS KZ12', 'BDS+KND', 'DAG 25-59', 'M 20-49', 'M 25-54', 'M 25-59',
-                     'M 25-67', 'M 50+', 'V 20-49', 'V 25-54', 'V 25-59', 'V 25-67', 'V 40+',
-                     'V 50+', 'W1 45-75']
-
-    token = api_utils.get_api_token()
-    for tg in target_groups:
-        df = api_utils.call_pop_report_tv(tg, token)
-        pop_dict[tg] = calculate_pop(df)
-
-    pop_dict = {key: '{0:,.0f}'.format(value).replace(',', '.') for key, value in pop_dict.items()}
-    print(pop_dict)
+    main()

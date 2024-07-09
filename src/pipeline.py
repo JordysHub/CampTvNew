@@ -36,23 +36,13 @@ def run_script(script_name):
 
 def main():
     try:
-        # Execute spots collection script
         run_script("src/scripts/collect_spots.py")
 
-        # Execute spots processing script
-        run_script("src/scripts/process_spots.py")
-
-        # Update all spots file
-        run_script("src/scripts/update_spots_file.py")
-
-        # Execute flights collection script
         run_script("src/scripts/create_flights.py")
 
-        # Execute bereik collection script
         run_script("src/scripts/collect_bereik.py")
 
-        # Execute bereik processing script
-        run_script("src/scripts/process_bereik.py")
+        run_script("src/scripts/calculate_pop.py")
 
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")

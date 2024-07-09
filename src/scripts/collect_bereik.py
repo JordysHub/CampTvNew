@@ -12,7 +12,6 @@ import pandas as pd
 import time
 from tqdm import tqdm
 import argparse
-import time
 
 # Setup logger
 logger = setup_logger()
@@ -68,6 +67,11 @@ def execute_query_to_df(query_key, params=None):
     query = query_dict[query_key]
 
     if params:
+        # Extract ster_grp_condition to replace it manually in the query string
+        ster_grp_condition = params.pop('ster_grp', '>= 0')
+        query = query.format(ster_grp_condition=ster_grp_condition)
+
+        # Replace the rest of the parameters
         for key, value in params.items():
             query = query.replace(f':{key}', str(value))
 
@@ -86,9 +90,11 @@ def retrieve_and_format_flights(query_key):
     df['end_date'] = pd.to_datetime(df['end_date']).dt.strftime("%d%m%y")
     return df
 
-def process_missing_flights(target_groups, df_flights, mock_campaign):
+def process_missing_flights(target_groups, df_flights, mock_campaign, ster_grp = True):
+
+    ster_grp_condition = '> 0' if ster_grp else '>= 0'
     for tg in target_groups:
-        params = {'target_group': f"('{tg}')", 'mock_campaign': mock_campaign}
+        params = {'target_group': f"('{tg}')", 'mock_campaign': mock_campaign, 'ster_grp': ster_grp_condition}
         df_missing_tg = execute_query_to_df('get_missing_flights', params)
 
         if df_missing_tg is not None and not df_missing_tg.empty:
@@ -126,7 +132,7 @@ if __name__ == "__main__":
     target_groups = args.tg if args.tg else mydict.target_groups
 
     # Step 3: Retrieve missing flights for each target group and process
-    process_missing_flights(target_groups, df_flights, mock_campaign=0)
+    process_missing_flights(target_groups, df_flights, mock_campaign=0, ster_grp = STER_FLIGHTS_ONLY)
 
     # Step 4: Retrieve flights with duration mismatch that need to be updated
     update_running_flights(target_groups, df_flights)
