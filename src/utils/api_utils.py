@@ -55,7 +55,7 @@ def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
 
     return df
 
-def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
+def call_bereik_report_tv(target_groups: str, start_date: str, end_date: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
     """
     Call the camp bereik getter report API, retrieve the data for the specified target group, advertiser, product, start date, and end date, and return the result as a DataFrame.
     Advertiser and product aren't strictly nesssary, so the report can be called without these.
@@ -69,7 +69,7 @@ def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, tok
     - product: product string
     - only_ster: if True, only STER channels are included in the report
     """
-    target_group = dict.rename_dict.get(target_group, target_group)
+    # target_group = dict.rename_dict.get(target_group, target_group)
 
     if advertiser is not None:
         if product is not None:
@@ -82,7 +82,7 @@ def call_bereik_report_tv(target_group: str, start_date: str, end_date: str, tok
         filter_text = None
 
     dict_call = {
-        "target": target_group,
+        "target": target_groups,
         "report": 'JordyCampBereik',
         "period": f"{start_date}-{end_date}",
         "filtertext": filter_text,
@@ -127,7 +127,7 @@ def call_kdh_getter_report(day: str, token: str, advertiser=None, product=None) 
             "Content-Type": "application/json",
         },
         json={
-            "report": "Jordy_kdh_getter_nmo",
+            "report": "Jordy_kdh_getter_nmo_Ster",
             "target": "10+",
             "period": f"{day}",
             "filtertext": filter_text,

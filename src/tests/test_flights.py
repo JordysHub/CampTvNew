@@ -1,43 +1,53 @@
 import pandas as pd
 import pytest
+
 import os
 from sqlalchemy import create_engine, MetaData, Table
 from sqlalchemy.orm import sessionmaker
 import camp_tv_new.src.utils.database_utils as db_utils
 import camp_tv_new.src.utils.connection_utils as con_utils
 
-def query_to_df(query):
-    engine = con_utils.create_sql_alchemy_engine()
-    df_query = pd.read_sql_query(query, engine)
+def test_no_flights_with_count_greater_than_3():
+    sql_query = """
+    SELECT target_group, flight_id
+    FROM [dbo].[tv.bereik_ster]
+    GROUP BY target_group, flight_id
+    HAVING COUNT(*) > 3;
+    """
+    result_df = db_utils.query_to_df(sql_query)
+    # Assert that the DataFrame is empty
+    assert result_df.empty, "Expected no flights with count greater than 3, but found some."
 
-    return df_query
+def test_no_flights_with_count_greater_than_1():
+    sql_query = """
+    SELECT flight_id, COUNT(*) as count
+    FROM [dbo].[tv.flights_ster]
+    GROUP BY flight_id
+    HAVING COUNT(*) > 1;
+    """
+    result_df = db_utils.query_to_df(sql_query)
+    # Assert that the DataFrame is empty
+    assert result_df.empty, "Expected no flights with count greater than 1, but found some."
 
-@pytest.fixture(scope='module')
-def bereik_data():
-    query = 'SELECT DISTINCT flight_id, target_group, campaign_duration FROM [dbo].[tv.bereik]'
-    return query_to_df(query)
+def test_all_flights_exist_in_bereik():
+    sql_query = """
+    SELECT f.flight_id
+    FROM [dbo].[tv.flights_ster] f
+    LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
+    WHERE b.flight_id IS NULL;
+    """
+    result_df = db_utils.query_to_df(sql_query)
+    # Assert that the DataFrame is empty
+    assert result_df.empty, f"Found flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
 
-@pytest.fixture(scope='module')
-def flights_data():
-    query = 'SELECT flight_id, campaign_duration FROM [dbo].[tv.flights] WHERE mock_campaign = 0'
-    return query_to_df(query)
+def test_all_flights_exist_in_bereik_per_target_group(sql_query):
+    sql_query = """
+    SELECT DISTINCT f.target_group, f.flight_id
+    FROM [dbo].[tv.flights_ster] f
+    LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id AND f.target_group = b.target_group
+    WHERE b.flight_id IS NULL;
+    """
 
-@pytest.mark.parametrize('target_group', ['13+'])
-def test_campaign_duration_for_target_group(target_group, bereik_data, flights_data):
-    bereik_data_tg = bereik_data[bereik_data['target_group'] == target_group]
-    flights_data_tg = flights_data.copy()
-
-    # Dictionary to store mismatched durations
-    mismatched_durations = {}
-
-    for index, row in bereik_data_tg.iterrows():
-        flight_id = row['flight_id']
-        bereik_duration = row['campaign_duration']
-
-        if flight_id in flights_data_tg['flight_id'].values:
-            flights_duration = flights_data_tg.loc[flights_data_tg['flight_id'] == flight_id, 'campaign_duration'].iloc[0]
-
-            if bereik_duration != flights_duration:
-                mismatched_durations[flight_id] = (bereik_duration, flights_duration)
-
-    assert not mismatched_durations, f"Mismatched campaign durations found for target group {target_group}: {mismatched_durations}"
+    result_df = db_utils.query_to_df(sql_query)
+    # Assert that the DataFrame is empty
+    assert result_df.empty, f"Found flights that do not exist in bereik table for some target groups:\n{result_df.to_string(index=False)}"

@@ -13,7 +13,7 @@ def dump_to_sql(
     if_exists = 'append',
     index=False,
     method="multi",
-    chunksize=50,
+    chunksize=10,
 ):
     """
     A function to dump a pandas DataFrame to a SQL database using SQLAlchemy.
@@ -65,10 +65,10 @@ def check_existing_primary_keys(df: pd.DataFrame, table_name: str,  column_name:
 
         return df_to_insert
 
-def get_all_dates_from_db():
-    query = """
+def get_all_dates_from_db(table_name):
+    query = f"""
     SELECT DISTINCT [date]
-    FROM [dbo].[tv.spots]
+    FROM [dbo].[{table_name}]
     """
     engine = con_utils.create_sql_alchemy_engine()
     # Execute the query and load the data into a DataFrame
@@ -98,7 +98,7 @@ def delete_flights(list_of_flights, table_name, target_group = None):
 
         # Construct the SQL DELETE statement
         sql_delete = f"""
-        DELETE FROM [dbo].{table_name}
+        DELETE FROM [dbo].[{table_name}]
         WHERE flight_id IN {list_of_flights}
         """
 
@@ -110,16 +110,18 @@ def delete_flights(list_of_flights, table_name, target_group = None):
             with connection.begin() as transaction:
                 try:
                     # Execute the DELETE statement
-                    connection.execute(text(sql_delete))
+                    result = connection.execute(text(sql_delete))
+                    # Get the number of rows deleted
+                    rows_deleted = result.rowcount
                     # Commit the transaction
                     transaction.commit()
+                    # Log the number of rows deleted
+                    logger.info(f"{rows_deleted} flights deleted successfully.")
                 except Exception as e:
                     # Rollback the transaction in case of error
                     transaction.rollback()
                     logger.error(f"Error deleting flights: {e}")
                     raise
 
-        logger.info(f"{len(list_of_flights)} flights deleted successfully.")
-
     except Exception as e:
-        logger.error(f"Error deleting flights: {e}")
+        logger.error(f"Error during the deletion process: {e}")

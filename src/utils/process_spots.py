@@ -21,7 +21,8 @@ def determine_ids(df: pd.DataFrame) -> pd.DataFrame:
     df_ids = df_ids.drop_duplicates().set_index(["advertiser", "product"])
 
     # Get all unique values of ids per exploitant
-    for expl in ["ster", "adalliance", "talpa"]:
+    # for expl in ["ster", "adalliance", "talpa"]:
+    for expl in ["ster"]:
         df_ids = df_ids.merge(df[df[f"{expl}_grp"] > 0]
                               .groupby(["advertiser", "product"])["ster_id"]
                               .apply(lambda x: ",".join(x.unique())).to_frame()
@@ -48,7 +49,8 @@ def add_dayparts(df: pd.DataFrame) -> pd.DataFrame:
 
     # Perform the groupby and sum operation
     group_cols = ['date', 'advertiser', 'product', 'daypart', 'hour']
-    sum_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'regio_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
+    # sum_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'regio_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
+    sum_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'regio_grp', 'total_grp']
     df = df.groupby(by=group_cols)[sum_cols].sum().reset_index()
 
     return df
@@ -98,6 +100,7 @@ def clean_hour_column(df):
 
     df['hour'] = df['hour'].str.replace('24:00:00', '00:00:00').str.replace('25:00:00', '01:00:00')
     df['hour'] = pd.to_datetime(df['hour'], format='%H:%M:%S')
+    df['hour'] = df['hour'].dt.hour
 
     return df
 def count_spots_and_grp(df):
@@ -109,8 +112,8 @@ def count_spots_and_grp(df):
         npo3_grp=('npo3_grp', 'sum'),
         ster_grp=('ster_grp', 'sum'),
         regio_grp=('regio_grp', 'sum'),
-        adalliance_grp=('adalliance_grp', 'sum'),
-        talpa_grp=('talpa_grp', 'sum'),
+        # adalliance_grp=('adalliance_grp', 'sum'),
+        # talpa_grp=('talpa_grp', 'sum'),
         total_grp=('total_grp', 'sum')).reset_index()
 
     return grouped_df.sort_values(by=['date', 'advertiser', 'product'])

@@ -1,41 +1,64 @@
 query_dict = {
     'get_flights': '''
-        SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights]''',
+        SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights_ster]''',
     'get_bereik':
-        '''SELECT flight_id, target_group, campaign_duration, daypart FROM [dbo].[tv.bereik] WHERE target_group = :target_group''',
+        '''SELECT flight_id, target_group, campaign_duration, daypart FROM [dbo].[tv.bereik_ster] WHERE target_group = :target_group''',
     'get_bereik_model':'''
         SELECT b.flight_id, f.start_date, f.end_date, b.target_group, b.campaign_duration, b.daypart, b.total_grp, b.ster_grp, b.regio_grp, b.npo1_grp, b.npo2_grp, b.npo3_grp, b.[ster_1+]
-        FROM [dbo].[tv.bereik] b
-        LEFT JOIN [dbo].[tv.flights] f ON b.flight_id = f.flight_id
+        FROM [dbo].[tv.bereik_ster] b
+        LEFT JOIN [dbo].[tv.flights_ster] f ON b.flight_id = f.flight_id
         where b.ster_grp > 0 and target_group = :target_group and start_date >= :start_date and end_date <= :end_date
         ''',
 
     'get_flights_with_duration_mismatch': '''
-            SELECT f.flight_id, f.advertiser, f.product, f.start_date, f.end_date, f.campaign_duration, f.mock_campaign
-            FROM [dbo].[tv.flights] f
-            INNER JOIN [dbo].[tv.bereik] b ON f.flight_id = b.flight_id
-            WHERE f.campaign_duration <> b.campaign_duration
-            AND b.target_group = :target_group
+            SELECT
+            f.flight_id,
+            f.advertiser,
+            f.product,
+            f.start_date,
+            f.end_date,
+            f.campaign_duration,
+            f.mock_campaign,
+            b.target_group
+        FROM [dbo].[tv.flights_ster] f
+        INNER JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id AND f.target_group = b.target_group
+        WHERE f.campaign_duration <> b.campaign_duration
         ''',
 
-    'get_missing_flights': '''
+    'get_missing_flights_tg': '''
         SELECT tg.target_group, f.flight_id
         FROM (
             VALUES :target_group
         ) AS tg(target_group)
         CROSS JOIN [dbo].[tv.flights] f
-        LEFT JOIN [dbo].[tv.bereik] b ON b.flight_id = f.flight_id AND b.target_group = tg.target_group
+        LEFT JOIN [dbo].[tv.bereik_ster] b ON b.flight_id = f.flight_id AND b.target_group = tg.target_group
         WHERE b.flight_id IS NULL
         AND f.mock_campaign = :mock_campaign
         AND f.ster_grp {ster_grp_condition}
+    ''',
+
+    'get_missing_flights_all': '''
+        SELECT f.flight_id
+        FROM [dbo].[tv.flights_ster] f
+        LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
+        WHERE b.flight_id IS NULL
     ''',
 
     'collect_mock_flights': '''
     SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp
     FROM [dbo].[tv.flights]
     WHERE mock_campaign = 1
-    '''
+    ''',
 
+    'get_existing_campaign_data': '''
+    SELECT DISTINCT flight_id, target_group
+    FROM [dbo].[tv.bereik_ster];
+    ''',
+
+    'get_existing_dates_from_spots': '''
+    SELECT DISTINCT [date]
+    FROM [dbo].[tv.spots_ster]
+    ''',
 }
 
 

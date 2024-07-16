@@ -10,7 +10,8 @@ from tqdm import tqdm
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     # preprocessing
-    df = df[['advertiser', 'product', 'date', 'npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']].drop_duplicates()
+    # df = df[['advertiser', 'product', 'date', 'npo1_grp', 'npo2_grp', 'npo3_grp', 'regio_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']].drop_duplicates()
+    df = df[['advertiser', 'product', 'date', 'npo1_grp', 'npo2_grp', 'npo3_grp', 'regio_grp', 'ster_grp']].drop_duplicates()
     df = df.sort_values(by=["advertiser", "product", "date"]).reset_index(drop=True)
     df['date'] = pd.to_datetime(df['date'])
 
@@ -106,7 +107,8 @@ def split_campaign(campaign):
 
 def sum_grps_for_splitted_campaigns(df_new_campaigns, df_spots):
     # Initialize GRP columns with 0
-    grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
+    # grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
+    grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'total_grp']
     for col in grp_cols:
         df_new_campaigns[col] = 0.0
 
@@ -187,26 +189,33 @@ def update_flights(df_flights_old, df_flights_new):
 
     return df_flights_updated, df_flights_new_unique
 
-def kansspel_alcohol_adv(df):
+def  kansspel_alcohol(df_flights):
+    df_spots = pd.read_excel("././data/interim/all_spots_ster.xlsx")
+    df_spots['date'] = pd.to_datetime(df_spots['date']).dt.date
 
-    df['hour'] = pd.to_datetime(df['hour'], format='%H:%M:%S')
-    # Group the DataFrame by advertiser or product
-    grouped_df = df.groupby(['advertiser', 'product'])
-    # Filter the groups to only include those where all campaigns aired between 21:00 and 02:00
-    filtered_groups = grouped_df.filter(lambda x: all((x['hour'].dt.hour >= 21) | (x['hour'].dt.hour <= 2)))
+    results = []
+    for _, flight in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,):
+        # Filter spots based on advertiser, product, and date range
+        flight_spots = df_spots[
+            (df_spots['advertiser'] == flight['advertiser']) &
+            (df_spots['product'] == flight['product']) &
+            (df_spots['date'] >= flight['start_date']) &
+            (df_spots['date'] <= flight['end_date'])
+        ]
 
-    # Mark filtered campaigns with 'kansspel_alcohol' as True
-    filtered_groups['alcohol_kansspel'] = True
-    # Merge filtered_groups with original dataframe
-    merged_df = pd.merge(df, filtered_groups, how='left')
+        # Check if all hours are within the specified range (21 to 2)
+        within_hours = flight_spots['hour'].apply(lambda x: 21 <= x <= 23 or 0 <= x <= 2).all()
 
-    # Fill NaN values in 'kansspel_alcohol' column with False
-    merged_df['alcohol_kansspel'] = merged_df['alcohol_kansspel'].fillna(False)
+        results.append({
+            'flight_id': flight['flight_id'],
+            'alcohol_kansspelen': within_hours
+        })
 
-    # drop hour column
-    merged_df = merged_df.drop(columns=['hour'])
+    alcohol_kansspelen = pd.DataFrame(results)
+    # Merge the results with the flights DataFrame
+    flights_with_alcohol = df_flights.merge(alcohol_kansspelen, on='flight_id')
 
-    return merged_df
+    return flights_with_alcohol
 
 ############ MOCK FLIGHTS ################
 
@@ -291,8 +300,9 @@ def calculate_grps_for_mock_campaigns(df_mocks, df_spots):
         'npo2_grp': 'sum',
         'npo3_grp': 'sum',
         'ster_grp': 'sum',
-        'adalliance_grp': 'sum',
-        'talpa_grp': 'sum',
+        'regio_grp': 'sum',
+        # 'adalliance_grp': 'sum',
+        # 'talpa_grp': 'sum',
         'total_grp': 'sum'
     }).reset_index()
     final_campaigns_df = pd.merge(df_mocks, aggregated_df, on='flight_id', how='left')
