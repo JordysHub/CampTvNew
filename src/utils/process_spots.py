@@ -110,10 +110,11 @@ def count_spots_and_grp(df):
         npo1_grp=('npo1_grp', 'sum'),
         npo2_grp=('npo2_grp', 'sum'),
         npo3_grp=('npo3_grp', 'sum'),
-        ster_grp=('ster_grp', 'sum'),
         regio_grp=('regio_grp', 'sum'),
+        ster_grp=('ster_grp', 'sum'),
         # adalliance_grp=('adalliance_grp', 'sum'),
         # talpa_grp=('talpa_grp', 'sum'),
-        total_grp=('total_grp', 'sum')).reset_index()
+        # total_grp=('total_grp', 'sum')
+        ).reset_index()
 
     return grouped_df.sort_values(by=['date', 'advertiser', 'product'])

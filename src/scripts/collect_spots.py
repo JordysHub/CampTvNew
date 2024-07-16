@@ -75,9 +75,8 @@ def get_spots(missing_dates: list) -> pd.DataFrame:
 def save_to_excel(df: pd.DataFrame):
     try:
         df['date'] = pd.to_datetime(df['date']).dt.date
-
-        # df_all_spots = pd.read_excel("../data/interim/all_spots_ster.xlsx", engine='openpyxl')
-        # df_all_spots = pd.concat([df_all_spots, df], ignore_index=True)
+        df_all_spots = pd.read_excel("../data/interim/all_spots_ster.xlsx", engine='openpyxl')
+        df_all_spots = pd.concat([df_all_spots, df], ignore_index=True)
         df.sort_values(by=['advertiser', 'product', 'date', 'hour'], ignore_index=True, inplace=True)
         df.drop_duplicates(subset=['advertiser', 'product', 'date', 'hour'], keep='last', ignore_index=True, inplace=True)
         df.to_excel("././data/interim/all_spots_ster.xlsx", index=False)

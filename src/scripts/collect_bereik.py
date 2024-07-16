@@ -5,8 +5,8 @@ import camp_tv_new.src.utils.bereik_utils as bereik_utils
 import camp_tv_new.src.utils.api_utils as api_utils
 import camp_tv_new.src.utils.database_utils as db_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
-import camp_tv_new.src.utils.dictionaries as mydict
 from camp_tv_new.src.utils.query_dict import query_dict
+import camp_tv_new.src.utils.dictionaries as mydict
 
 import pandas as pd
 import time
@@ -31,15 +31,15 @@ def parse_arguments():
     return parser.parse_args()
 
 @timer_func
-def get_bereik(df_flights, target_group: str):
+def get_bereik(df_missing_flights):
     """
-    Fetch bereik data for the given flights and target group.
+    Fetch bereik data for the given flights and target group(s).
     """
     current_token_time = time.time()
     token = api_utils.get_api_token()
 
-    for idx, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
-                         desc=f"Processing flights for target group {target_group}",
+    for idx, row in tqdm(df_missing_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
+                         desc=f"Processing missing flights for target groups",
                          bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
 
         if time.time() - current_token_time >= 3000:
@@ -48,41 +48,17 @@ def get_bereik(df_flights, target_group: str):
             current_token_time = time.time()
 
         def fetch_bereik():
-            return bereik_utils.get_bereik(row.name, row, target_group, token)
+            return bereik_utils.get_bereik(row.name, row, token)
 
         try:
             # Fetch data, preprocess and dump to sql
             df = api_utils.retry_with_exponential_backoff(fetch_bereik)
             if df is not None and not df.empty:
-                processed_df = bereik_utils.process_raw_bereik_data(df, target_group)
-                db_utils.dump_to_sql(processed_df, 'tv.bereik')
+                processed_df = bereik_utils.process_raw_bereik_data(df)
+                db_utils.dump_to_sql(processed_df, 'tv.bereik_ster')
 
         except Exception as e:
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
-
-def execute_query_to_df(query_key, params=None):
-    if query_key not in query_dict:
-        raise ValueError(f"Query key '{query_key}' not found in query_dict.")
-
-    query = query_dict[query_key]
-
-    if params:
-        # Extract ster_grp_condition to replace it manually in the query string
-        ster_grp_condition = params.pop('ster_grp', '>= 0')
-        query = query.format(ster_grp_condition=ster_grp_condition)
-
-        # Replace the rest of the parameters
-        for key, value in params.items():
-            query = query.replace(f':{key}', str(value))
-
-    try:
-        df = db_utils.query_to_df(query)
-        if df is not None and not df.empty:
-            return df
-        else:
-            return pd.DataFrame()
-    except Exception as e:
-        logger.error(f"Error executing query: {str(e)}")
 
 def retrieve_and_format_flights(query_key):
     df = db_utils.query_to_df(query_dict[query_key])
@@ -90,58 +66,35 @@ def retrieve_and_format_flights(query_key):
     df['end_date'] = pd.to_datetime(df['end_date']).dt.strftime("%d%m%y")
     return df
 
-def process_missing_flights(target_groups, df_flights, mock_campaign, ster_grp = True):
+def retrieve_missing_flights_per_target_group(df_flights, existing_campaign_data, target_groups):
+    all_combinations = pd.MultiIndex.from_product([df_flights['flight_id'], target_groups], names=['flight_id', 'target_group']).to_frame(index=False)
+    missing_pairs = all_combinations.merge(existing_campaign_data, on=['flight_id', 'target_group'], how='left', indicator=True)
+    missing_pairs = missing_pairs[missing_pairs['_merge'] == 'left_only'].drop(columns=['_merge'])
+    grouped_df = missing_pairs.groupby('flight_id')['target_group'].apply(lambda x: ', '.join(x)).reset_index()
+    grouped_df.columns = ['flight_id', 'missing_target_groups']
+    df_missing_flights = df_flights.merge(grouped_df, on='flight_id', how='left')
+    df_missing_flights = df_missing_flights.dropna(subset=['missing_target_groups'])
 
-    ster_grp_condition = '> 0' if ster_grp else '>= 0'
-    for tg in target_groups:
-        params = {'target_group': f"('{tg}')", 'mock_campaign': mock_campaign, 'ster_grp': ster_grp_condition}
-        df_missing_tg = execute_query_to_df('get_missing_flights', params)
-
-        if df_missing_tg is not None and not df_missing_tg.empty:
-            logger.info(f"{len(df_missing_tg)} missing flights for target group {tg} with COLLECT_MOCKS = {mock_campaign}:")
-            filtered_flights_tg = df_flights[df_flights['flight_id'].isin(df_missing_tg['flight_id'])]
-            get_bereik(filtered_flights_tg, tg)
-        else:
-            logger.info(f"No missing flights found for target group {tg} with COLLECT_MOCKS = {mock_campaign}.")
-
-def update_running_flights(target_groups, df_flights):
-    for tg in target_groups:
-        params = {'target_group': f"('{tg}')"}
-        df_duration_mismatch = execute_query_to_df('get_flights_with_duration_mismatch', params=params)
-
-        if df_duration_mismatch is not None and not df_duration_mismatch.empty:
-            logger.info(f"{len(df_duration_mismatch)} need an update")
-            list_of_flights = df_duration_mismatch['flight_id'].unique().tolist()
-            db_utils.delete_flights(list_of_flights, '[tv.bereik]', tg)
-
-            filtered_flights_tg = df_flights[df_flights['flight_id'].isin(df_duration_mismatch['flight_id'])]
-            get_bereik(filtered_flights_tg, tg)
+    return df_missing_flights
 
 if __name__ == "__main__":
-    COLLECT_MOCKS = True
-    STER_FLIGHTS_ONLY = True
-
-    # Step 1: Retrieve flights data and format dates
+    # Step 1: Retrieve flights data and format dates. Retrieve existing data in bereik table
     df_flights = retrieve_and_format_flights('get_flights')
-
-    if STER_FLIGHTS_ONLY:
-        df_flights = df_flights[df_flights['ster_grp'] > 0]
+    existing_campaign_data = db_utils.query_to_df(query_dict['get_existing_campaign_data'])
 
     # Step 2: Parse command line arguments
     args = parse_arguments()
     target_groups = args.tg if args.tg else mydict.target_groups
 
-    # Step 3: Retrieve missing flights for each target group and process
-    process_missing_flights(target_groups, df_flights, mock_campaign=0, ster_grp = STER_FLIGHTS_ONLY)
+    # Step 3: Get all missing target_groups for every flight_id
+    df_missing_flights = retrieve_missing_flights_per_target_group(df_flights, existing_campaign_data, target_groups)
 
-    # Step 4: Retrieve flights with duration mismatch that need to be updated
-    update_running_flights(target_groups, df_flights)
+    # Step 4: Retrieve missing flights for each target group and process
+    if df_missing_flights is not None and not df_missing_flights.empty:
+        logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
+        get_bereik(df_missing_flights)
 
-    # Step 5: Collect mock flights
-    if COLLECT_MOCKS:
-        df_flights_mock = retrieve_and_format_flights('collect_mock_flights')
-
-        if STER_FLIGHTS_ONLY:
-            df_flights_mock = df_flights_mock[df_flights_mock['ster_grp'] > 0]
-
-        process_missing_flights(target_groups, df_flights_mock, mock_campaign=1)
+    # # Step 5: Retrieve flights with duration mismatch that need to be updated
+    # df_duration_mismatch = db_utils.query_to_df(query_dict['get_flights_with_duration_mismatch'])
+    # if df_duration_mismatch is not None and not df_missing_flights.empty:
+    #     update_running_flights(df_flights, target_groups)

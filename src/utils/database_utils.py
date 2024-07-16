@@ -6,6 +6,7 @@ from sqlalchemy import delete, text
 
 
 logger = setup_logger()
+
 def dump_to_sql(
     df,
     table_name,
@@ -64,24 +65,6 @@ def check_existing_primary_keys(df: pd.DataFrame, table_name: str,  column_name:
         df_to_insert = df[~df[column_name].isin(existing_keys)]
 
         return df_to_insert
-
-def get_all_dates_from_db(table_name):
-    query = f"""
-    SELECT DISTINCT [date]
-    FROM [dbo].[{table_name}]
-    """
-    engine = con_utils.create_sql_alchemy_engine()
-    # Execute the query and load the data into a DataFrame
-    df_distinct_dates = pd.read_sql_query(query, engine)
-
-    # If the date column is not in datetime format, convert it
-    df_distinct_dates['date'] = pd.to_datetime(df_distinct_dates['date'])
-
-    # Sort the dates if needed
-    df_distinct_dates = df_distinct_dates.sort_values(by='date')
-    list_of_dates = df_distinct_dates['date'].tolist()
-
-    return list_of_dates
 
 def query_to_df(query):
     engine = con_utils.create_sql_alchemy_engine()

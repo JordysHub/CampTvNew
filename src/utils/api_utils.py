@@ -1,7 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
-import camp_tv_new.src.utils.dictionaries as dict
-from datetime import datetime, date
+from datetime import datetime
 import pandas as pd
 import os
 import argparse
@@ -144,8 +143,6 @@ def call_kdh_getter_report(day: str, token: str, advertiser=None, product=None) 
         df = pd.DataFrame()
 
     return df
-
-
 
 def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs):
     """

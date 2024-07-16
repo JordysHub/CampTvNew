@@ -12,6 +12,7 @@ import pandas as pd
 import time
 from tqdm import tqdm
 import argparse
+import re
 
 # Setup logger
 logger = setup_logger()
@@ -37,8 +38,10 @@ def get_bereik(df_missing_flights):
     """
     current_token_time = time.time()
     token = api_utils.get_api_token()
+    # Rename target groups, because some mismatch between api and database
+    # df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(rename_groups)
 
-    for idx, row in tqdm(df_missing_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
+    for idx, row in tqdm(df_missing_flights.iterrows(), total=len(df_missing_flights), position=0, ncols=120,
                          desc=f"Processing missing flights for target groups",
                          bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
 
@@ -60,6 +63,14 @@ def get_bereik(df_missing_flights):
         except Exception as e:
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
 
+# def rename_groups(s):
+#     # Define your renaming rules in a dictionary
+#     renaming_rules = mydict.rename_column_for_api
+
+#     for old, new in renaming_rules.items():
+#         s = re.sub(r'\b' + re.escape(old) + r'\b', new, s)
+#     return s
+
 def retrieve_and_format_flights(query_key):
     df = db_utils.query_to_df(query_dict[query_key])
     df['start_date'] = pd.to_datetime(df['start_date']).dt.strftime("%d%m%y")
@@ -73,20 +84,22 @@ def retrieve_missing_flights_per_target_group(df_flights, existing_campaign_data
     grouped_df = missing_pairs.groupby('flight_id')['target_group'].apply(lambda x: ', '.join(x)).reset_index()
     grouped_df.columns = ['flight_id', 'missing_target_groups']
     df_missing_flights = df_flights.merge(grouped_df, on='flight_id', how='left')
+    df_missing_flights = df_missing_flights.dropna(subset=['missing_target_groups'])
 
     return df_missing_flights
 
 if __name__ == "__main__":
     # Step 1: Retrieve flights data and format dates. Retrieve existing data in bereik table
-    df_flights = retrieve_and_format_flights('get_flights')
-    existing_campaign_data = db_utils.query_to_df(query_dict['get_existing_campaign_data'])
+    df_flights = retrieve_and_format_flights('get_flights_ster')
+    existing_campaign_data = db_utils.query_to_df(query_dict['get_existing_campaign_data_ster'])
 
     # Step 2: Parse command line arguments
     args = parse_arguments()
     target_groups = args.tg if args.tg else mydict.target_groups
 
-    # Step 3: Get all missing target_groups for every flight_id
+    # Step 3: Get all missing flights for every target group
     df_missing_flights = retrieve_missing_flights_per_target_group(df_flights, existing_campaign_data, target_groups)
+    df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(rename_groups)
 
     # Step 4: Retrieve missing flights for each target group and process
     if df_missing_flights is not None and not df_missing_flights.empty:
