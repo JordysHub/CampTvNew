@@ -85,7 +85,8 @@ if __name__ == "__main__":
 
     # Delete existing flights from the database that need an update
     logger.debug("Delete flights that need to be updated...")
-    db_utils.delete_flights(flights_to_delete_from_db, table_name=table_name)
+    if len(flights_to_delete_from_db) > 0:
+        db_utils.delete_flights(flights_to_delete_from_db, table_name=table_name)
     db_utils.dump_to_sql(df_flights, table_name=table_name)
 
     # delete flights that can't be find in Edge (wrong advertiser/product combi)

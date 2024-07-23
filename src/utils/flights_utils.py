@@ -108,7 +108,7 @@ def split_campaign(campaign):
 def sum_grps_for_splitted_campaigns(df_new_campaigns, df_spots):
     # Initialize GRP columns with 0
     # grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
-    grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'total_grp']
+    grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'regio_grp','ster_grp']
     for col in grp_cols:
         df_new_campaigns[col] = 0.0
 
@@ -299,13 +299,13 @@ def calculate_grps_for_mock_campaigns(df_mocks, df_spots):
         'npo1_grp': 'sum',
         'npo2_grp': 'sum',
         'npo3_grp': 'sum',
-        'ster_grp': 'sum',
         'regio_grp': 'sum',
+        'ster_grp': 'sum',
         # 'adalliance_grp': 'sum',
         # 'talpa_grp': 'sum',
-        'total_grp': 'sum'
+        # 'total_grp': 'sum'
     }).reset_index()
     final_campaigns_df = pd.merge(df_mocks, aggregated_df, on='flight_id', how='left')
-    final_campaigns_df = final_campaigns_df.dropna(subset=['total_grp'])
+    final_campaigns_df = final_campaigns_df.dropna(subset=['ster_grp'])
 
     return final_campaigns_df

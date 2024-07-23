@@ -68,25 +68,31 @@ def check_existing_primary_keys(df: pd.DataFrame, table_name: str,  column_name:
 
 def query_to_df(query):
     engine = con_utils.create_sql_alchemy_engine()
-    df_query = pd.read_sql_query(query, engine)
+    with engine.connect() as connection:
+        df_query = pd.read_sql_query(query, connection)
 
     return df_query
 
-def delete_flights(list_of_flights, table_name, target_group = None):
+def delete_flights(list_of_flights, table_name, target_groups = None):
     try:
         # Connect to the database
         engine = con_utils.create_sql_alchemy_engine()
         # Convert list_of_flights to a tuple for use in the SQL query
         list_of_flights = tuple(list_of_flights)
 
+        # Convert target_groups to a format suitable for SQL IN clause
+        if target_groups:
+            target_groups_str = ', '.join(f"'{tg}'" for tg in target_groups)
+            target_groups_condition = f"AND target_group IN ({target_groups_str})"
+        else:
+            target_groups_condition = ""
+
         # Construct the SQL DELETE statement
         sql_delete = f"""
         DELETE FROM [dbo].[{table_name}]
         WHERE flight_id IN {list_of_flights}
+        {target_groups_condition}
         """
-
-        if target_group is not None:
-            sql_delete += f" AND target_group = '{target_group}'"
 
         with engine.connect() as connection:
             # Begin a transaction

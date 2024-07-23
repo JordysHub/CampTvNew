@@ -149,7 +149,7 @@ def process_raw_bereik_data(df_bereik_raw):
     processed_df['campaign_duration'] = processed_df.apply(lambda row: calculate_campaign_duration(row), axis=1)
     # Change column order
     processed_df = change_column_order(processed_df)
-    # Rename target_groups
+    # Rename target_groups back to normal syntax
     processed_df['target_group'] = processed_df['target_group'].replace(mydict.rename_dict)
 
     return processed_df

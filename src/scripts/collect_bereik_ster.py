@@ -5,7 +5,7 @@ import camp_tv_new.src.utils.bereik_utils as bereik_utils
 import camp_tv_new.src.utils.api_utils as api_utils
 import camp_tv_new.src.utils.database_utils as db_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
-from camp_tv_new.src.utils.query_dict import query_dict
+from camp_tv_new.src.utils.query_dict import Queries
 import camp_tv_new.src.utils.dictionaries as mydict
 
 import pandas as pd
@@ -31,6 +31,15 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+def rename_groups(s):
+    # Define your renaming rules in a dictionary
+    renaming_rules = mydict.rename_column_for_api
+
+    # Replace according to the rules
+    for old, new in renaming_rules.items():
+        s = s.replace(old, new)
+    return s
+
 @timer_func
 def get_bereik(df_missing_flights):
     """
@@ -38,8 +47,6 @@ def get_bereik(df_missing_flights):
     """
     current_token_time = time.time()
     token = api_utils.get_api_token()
-    # Rename target groups, because some mismatch between api and database
-    # df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(rename_groups)
 
     for idx, row in tqdm(df_missing_flights.iterrows(), total=len(df_missing_flights), position=0, ncols=120,
                          desc=f"Processing missing flights for target groups",
@@ -63,50 +70,52 @@ def get_bereik(df_missing_flights):
         except Exception as e:
             logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
 
-# def rename_groups(s):
-#     # Define your renaming rules in a dictionary
-#     renaming_rules = mydict.rename_column_for_api
+@timer_func
+def process_missing_flights(target_groups):
+    """Retrieve and process missing flights based on target groups."""
+    # Get all missing flights for every target group
+    df_missing_flights = db_utils.query_to_df(Queries.get_missing_flights_per_target_group(target_groups))
 
-#     for old, new in renaming_rules.items():
-#         s = re.sub(r'\b' + re.escape(old) + r'\b', new, s)
-#     return s
+    if df_missing_flights is not None and not df_missing_flights.empty:
+        logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
 
-def retrieve_and_format_flights(query_key):
-    df = db_utils.query_to_df(query_dict[query_key])
-    df['start_date'] = pd.to_datetime(df['start_date']).dt.strftime("%d%m%y")
-    df['end_date'] = pd.to_datetime(df['end_date']).dt.strftime("%d%m%y")
-    return df
+        # Process dates and target groups
+        df_missing_flights['start_date'] = pd.to_datetime(df_missing_flights['start_date']).dt.strftime("%d%m%y")
+        df_missing_flights['end_date'] = pd.to_datetime(df_missing_flights['end_date']).dt.strftime("%d%m%y")
+        df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(rename_groups)
 
-def retrieve_missing_flights_per_target_group(df_flights, existing_campaign_data, target_groups):
-    all_combinations = pd.MultiIndex.from_product([df_flights['flight_id'], target_groups], names=['flight_id', 'target_group']).to_frame(index=False)
-    missing_pairs = all_combinations.merge(existing_campaign_data, on=['flight_id', 'target_group'], how='left', indicator=True)
-    missing_pairs = missing_pairs[missing_pairs['_merge'] == 'left_only'].drop(columns=['_merge'])
-    grouped_df = missing_pairs.groupby('flight_id')['target_group'].apply(lambda x: ', '.join(x)).reset_index()
-    grouped_df.columns = ['flight_id', 'missing_target_groups']
-    df_missing_flights = df_flights.merge(grouped_df, on='flight_id', how='left')
-    df_missing_flights = df_missing_flights.dropna(subset=['missing_target_groups'])
+        get_bereik(df_missing_flights)
+    else:
+        logger.debug("No missing flights found.")
 
-    return df_missing_flights
+@timer_func
+def updates_flights(target_groups):
+    """Retrieve, delete, and update flights with duration mismatch."""
+    df_flights_mismatch = db_utils.query_to_df(Queries.get_mismatched_flights_per_target_group(target_groups))
+
+    if df_flights_mismatch is not None and not df_flights_mismatch.empty:
+        logger.debug(f"Deleting and updating {len(df_flights_mismatch)} flights for {len(target_groups)} target groups...")
+
+        # Process dates and target groups
+        df_flights_mismatch['start_date'] = pd.to_datetime(df_flights_mismatch['start_date']).dt.strftime("%d%m%y")
+        df_flights_mismatch['end_date'] = pd.to_datetime(df_flights_mismatch['end_date']).dt.strftime("%d%m%y")
+        df_flights_mismatch['missing_target_groups'] = df_flights_mismatch['missing_target_groups'].apply(rename_groups)
+
+        # Delete mismatched flights
+        flight_ids = df_flights_mismatch['flight_id'].tolist()
+        db_utils.delete_flights(flight_ids, 'tv.bereik_ster', target_groups)
+
+        get_bereik(df_flights_mismatch)
+    else:
+        logger.debug("No mismatches between flights.")
 
 if __name__ == "__main__":
-    # Step 1: Retrieve flights data and format dates. Retrieve existing data in bereik table
-    df_flights = retrieve_and_format_flights('get_flights_ster')
-    existing_campaign_data = db_utils.query_to_df(query_dict['get_existing_campaign_data_ster'])
-
-    # Step 2: Parse command line arguments
+    # Step 1: Parse command line arguments
     args = parse_arguments()
     target_groups = args.tg if args.tg else mydict.target_groups
 
-    # Step 3: Get all missing flights for every target group
-    df_missing_flights = retrieve_missing_flights_per_target_group(df_flights, existing_campaign_data, target_groups)
-    df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(rename_groups)
+    # Step 2 & 3: Process missing flights
+    process_missing_flights(target_groups)
 
-    # Step 4: Retrieve missing flights for each target group and process
-    if df_missing_flights is not None and not df_missing_flights.empty:
-        logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
-        get_bereik(df_missing_flights)
-
-    # # Step 5: Retrieve flights with duration mismatch that need to be updated
-    # df_duration_mismatch = db_utils.query_to_df(query_dict['get_flights_with_duration_mismatch'])
-    # if df_duration_mismatch is not None and not df_missing_flights.empty:
-    #     update_running_flights(df_flights, target_groups)
+    # Step 4: Process flights mismatch
+    updates_flights(target_groups)

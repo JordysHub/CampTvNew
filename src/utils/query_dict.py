@@ -1,3 +1,116 @@
+class Queries:
+    @staticmethod
+    def get_mismatched_flights_per_target_group(target_groups):
+        target_groups_str = ', '.join(f"'{tg}'" for tg in target_groups)
+        return f"""
+        -- Step 1: Identify mismatched flights and their target groups
+        WITH MismatchedFlights AS (
+            SELECT
+                f.flight_id,
+                b.target_group
+            FROM [dbo].[tv.flights_ster] f
+            INNER JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
+            WHERE f.campaign_duration <> b.campaign_duration
+            AND b.target_group IN ({target_groups_str})
+        ),
+        -- Step 2: Select distinct target_groups for each flight_id
+        DistinctMismatches AS (
+            SELECT DISTINCT
+                flight_id,
+                target_group
+            FROM MismatchedFlights
+        ),
+        -- Step 3: Aggregate distinct mismatched target groups for each flight
+        AggregatedMismatches AS (
+            SELECT
+                flight_id,
+                STRING_AGG(target_group, ', ') AS mismatched_target_groups
+            FROM DistinctMismatches
+            GROUP BY flight_id
+        )
+        -- Step 4: Retrieve flight details and add the mismatched target groups column
+        SELECT f.[flight_id]
+            ,[advertiser]
+            ,[product]
+            ,[start_date]
+            ,[end_date]
+            ,[campaign_duration]
+            ,[npo1_grp]
+            ,[npo2_grp]
+            ,[npo3_grp]
+            ,[regio_grp]
+            ,[ster_grp]
+            ,[mock_campaign]
+            ,[alcohol_kansspelen],
+            COALESCE(am.mismatched_target_groups, '') AS mismatched_target_groups
+        FROM [dbo].[tv.flights_ster] f
+        LEFT JOIN AggregatedMismatches am ON f.flight_id = am.flight_id
+        WHERE am.mismatched_target_groups IS NOT NULL
+        """
+
+    @staticmethod
+    def get_missing_flights_per_target_group(target_groups):
+        union_all_query = " UNION ALL ".join([f"SELECT '{group}' AS target_group" for group in target_groups])
+        return f"""
+        -- Step 1: Create all possible combinations of flight_id and target_group
+        WITH AllCombinations AS (
+            SELECT
+                f.flight_id,
+                tg.target_group
+            FROM [dbo].[tv.flights_ster] f
+            CROSS JOIN (
+                {union_all_query}
+            ) tg
+        ),
+        -- Step 2: Identify missing combinations of flight_id and target_group
+        MissingCombinations AS (
+            SELECT
+                ac.flight_id,
+                ac.target_group
+            FROM AllCombinations ac
+            LEFT JOIN [dbo].[tv.bereik_ster] b ON ac.flight_id = b.flight_id AND ac.target_group = b.target_group
+            WHERE b.flight_id IS NULL
+        ),
+        -- Step 3: Aggregate missing target_groups for each flight_id
+        AggregatedMissingTargetGroups AS (
+            SELECT
+                flight_id,
+                STRING_AGG(target_group, ', ') AS missing_target_groups
+            FROM MissingCombinations
+            GROUP BY flight_id
+        )
+        -- Step 4: Retrieve flight details and include the aggregated missing target groups
+        SELECT f.[flight_id]
+            ,[advertiser]
+            ,[product]
+            ,[start_date]
+            ,[end_date]
+            ,[campaign_duration]
+            ,[npo1_grp]
+            ,[npo2_grp]
+            ,[npo3_grp]
+            ,[regio_grp]
+            ,[ster_grp]
+            ,[mock_campaign]
+            ,[alcohol_kansspelen],
+            COALESCE(am.missing_target_groups, '') AS missing_target_groups
+        FROM [dbo].[tv.flights_ster] f
+        LEFT JOIN AggregatedMissingTargetGroups am ON f.flight_id = am.flight_id
+        WHERE am.missing_target_groups IS NOT NULL
+        """
+
+
+
+
+
+
+
+
+
+
+
+
+
 query_dict = {
     'get_flights_ster': '''
         SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights_ster]''',
@@ -11,37 +124,6 @@ query_dict = {
     'get_existing_campaign_data': '''
         SELECT DISTINCT flight_id, target_group FROM [dbo].[tv.bereik];
     ''',
-
-
-    'get_flights_with_duration_mismatch_ster': '''
-            SELECT
-            f.flight_id,
-            f.advertiser,
-            f.product,
-            f.start_date,
-            f.end_date,
-            f.campaign_duration,
-            f.mock_campaign,
-            b.target_group
-        FROM [dbo].[tv.flights_ster] f
-        INNER JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id AND f.target_group = b.target_group
-        WHERE f.campaign_duration <> b.campaign_duration
-        ''',
-
-        'get_flights_with_duration_mismatch': '''
-            SELECT
-            f.flight_id,
-            f.advertiser,
-            f.product,
-            f.start_date,
-            f.end_date,
-            f.campaign_duration,
-            f.mock_campaign,
-            b.target_group
-        FROM [dbo].[tv.flights] f
-        INNER JOIN [dbo].[tv.bereik] b ON f.flight_id = b.flight_id AND f.target_group = b.target_group
-        WHERE f.campaign_duration <> b.campaign_duration
-        ''',
 
 
     'get_missing_flights_all': '''
@@ -75,6 +157,21 @@ query_dict = {
         LEFT JOIN [dbo].[tv.flights_ster] f ON b.flight_id = f.flight_id
         where b.ster_grp > 0 and target_group = :target_group and start_date >= :start_date and end_date <= :end_date
         ''',
+
+    'delete_double_entries': '''
+        WITH CTE AS (
+        SELECT
+            flight_id,
+            target_group,
+            campaign_duration,
+            daypart,
+            total_grp,
+            ROW_NUMBER() OVER (PARTITION BY flight_id, target_group, campaign_duration, daypart, total_grp ORDER BY (SELECT NULL)) AS row_num
+        FROM [dbo].[tv.bereik_ster]
+        )
+        DELETE FROM CTE
+        WHERE row_num > 1;
+    '''
 }
 
 
