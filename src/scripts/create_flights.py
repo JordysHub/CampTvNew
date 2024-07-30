@@ -44,14 +44,14 @@ def create_flights_from_spots(df_spots: pd.DataFrame):
 @timer_func
 def create_mocks_from_flights(df_flights: pd.DataFrame, df_spots: pd.DataFrame):
     logger.debug("Creating mock campaigns from spots...")
-    mock_campaigns_df = fu.create_mock_campaigns(df_flights, min_mock_duration=6)
+    mock_campaigns_df = fu.create_mock_campaigns(df_flights, min_mock_duration=6, max_allowed_overlap = 0.8, max_attempts=30)
     mock_campaigns_df = fu.calculate_grps_for_mock_campaigns(mock_campaigns_df, df_spots)
     mock_campaigns_df = finalize_flights(mock_campaigns_df, data_type='mock')
     return mock_campaigns_df
 
 
 if __name__ == "__main__":
-    CREATE_MOCKS = True
+    CREATE_MOCKS = False
     table_name = "tv.flights_ster"
 
     # Read the entire table into a DataFrame
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     # Create flights from spots
     df_flights = create_flights_from_spots(df_spots)
 
-    # Check if flights already exist in the database or that they need to be updated
+    # Check if flights already exist in the database or that they need to be updated with new days
     flights_to_delete_from_db = []
     for index, row in df_flights.iterrows():
         flight_id = row['flight_id']
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         if flight_id in existing_flights['flight_id'].values:
             existing_campaign_duration = existing_flights.loc[existing_flights['flight_id'] == flight_id, 'campaign_duration'].iloc[0]
 
-            # Case 1: Campaign duration matches, delete from df_flights
+            # Case 1: Campaign duration matches, drop row from df_flights
             if campaign_duration == existing_campaign_duration:
                 df_flights.drop(index, inplace=True)
 
@@ -79,8 +79,8 @@ if __name__ == "__main__":
             else:
                 flights_to_delete_from_db.append(flight_id)
 
-    # Calculate alcohol kansspelen
-    logger.debug("Calculate alcohol/kansspelen...")
+    # Calculate alcohol kansspelen for new flights
+    logger.debug(f"Calculate alcohol/kansspelen...{len(df_flights)} flights to calculate")
     df_flights = fu.kansspel_alcohol(df_flights)
 
     # Delete existing flights from the database that need an update
@@ -90,8 +90,7 @@ if __name__ == "__main__":
     db_utils.dump_to_sql(df_flights, table_name=table_name)
 
     # delete flights that can't be find in Edge (wrong advertiser/product combi)
-    logger.debug("Delete flights that can't be find in Edge...")
-    df_flights_to_delete = pd.read_excel('././warnings.xlsx')
+    df_flights_to_delete = pd.read_excel('./data/interim/warnings.xlsx')
     flights_to_delete = df_flights_to_delete['flight_id'].tolist()
     db_utils.delete_flights(flights_to_delete, table_name)
 

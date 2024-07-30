@@ -14,7 +14,9 @@ import time
 from datetime import datetime, timedelta
 import pandas as pd
 from tqdm import tqdm
+from dotenv import load_dotenv
 
+# Setup logger
 logger = setup_logger()
 
 def parse_arguments():
@@ -112,6 +114,7 @@ def get_missing_dates(start_date, end_date) -> list:
 
     # Get existing dates in db
     existing_dates_df = db_utils.query_to_df(query_dict['get_existing_dates_from_spots'])
+
     # Filter existing dates for all months except August 2023
     existing_dates_df['date'] = pd.to_datetime(existing_dates_df['date'], format='%d%m%y')
     existing_dates_df = existing_dates_df[
@@ -125,13 +128,15 @@ def get_missing_dates(start_date, end_date) -> list:
     # Find missing dates that are not in list_of_existing_dates and not in August 2023
     missing_dates = [
         date for date in all_dates
-        if (date not in list_of_existing_dates)
-        and not (date.year == 2023 and date.month == 8)
+        if (date not in list_of_existing_dates) and not (date.year == 2023 and date.month == 8)
     ]
 
     return missing_dates
 
 if __name__ == "__main__":
+    # Load environment variables from .env file
+    load_dotenv()
+
     table_name = 'tv.spots_ster'
     args = parse_arguments()
 

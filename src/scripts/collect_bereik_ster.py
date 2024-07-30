@@ -12,7 +12,6 @@ import pandas as pd
 import time
 from tqdm import tqdm
 import argparse
-import re
 
 # Setup logger
 logger = setup_logger()

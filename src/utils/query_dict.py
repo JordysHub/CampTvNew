@@ -99,6 +99,31 @@ class Queries:
         WHERE am.missing_target_groups IS NOT NULL
         """
 
+    @staticmethod
+    def delete_overlapping_flights():
+        # When fetching older data, these newly calculated campaigns can overlap with the already existing campaigns.
+        return f"""
+        WITH overlapping_campaigns AS (
+        SELECT
+            old.flight_id AS old_flight_id,
+            new.flight_id AS new_flight_id
+        FROM
+            [dbo].[tv.flights_ster] AS old
+        JOIN
+            [dbo].[tv.flights_ster] AS new
+        ON
+            old.advertiser = new.advertiser
+            AND old.product = new.product
+            AND old.end_date = new.end_date
+            AND new.start_date < old.start_date
+        )
+        DELETE FROM [dbo].[tv.flights_ster]
+        WHERE flight_id IN (
+            SELECT old_flight_id
+            FROM overlapping_campaigns
+        );
+        """
+
 
 
 

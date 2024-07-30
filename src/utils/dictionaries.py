@@ -43,6 +43,7 @@ rename_column_for_api = {
     'V25-67': 'V 25-67',
     'V40+': 'V 40+',
     'V50+': 'V 50+',
+    'BDS-KZ12': 'BDS KZ12'
 }
 
 olympic_period_list = [[date(2024, 7, 26), date(2024, 8, 11)],

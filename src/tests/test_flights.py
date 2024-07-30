@@ -15,7 +15,7 @@ def test_no_flights_with_count_greater_than_3():
     assert result_df.empty, "Expected no flights with count greater than 3, but found some."
 
 def test_no_flights_with_count_greater_than_1():
-    # There can't be more than 1 flight_id in the flights table
+    # There can't be more than 1 same flight_id in the flights table
     sql_query = """
     SELECT flight_id, COUNT(*) as count
     FROM [dbo].[tv.flights_ster]

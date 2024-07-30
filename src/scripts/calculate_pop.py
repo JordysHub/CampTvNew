@@ -39,18 +39,17 @@ def fetch_and_process_data(target_groups, token):
     return pop_dict
 
 def main():
-    target_groups = mydict.target_groups
+    target_groups = [mydict.rename_column_for_api.get(tg, tg) for tg in mydict.target_groups]
     token = api_utils.get_api_token()
 
     pop_dict = fetch_and_process_data(target_groups, token)
-    df_pop = pd.DataFrame.from_dict(pop_dict, orient='index', columns=['population']).reset_index()
-    df_pop.columns = ['target_group', 'population']
-    df_pop['target_group'] = df_pop['target_group'].replace(mydict.rename_dict)
-    df_pop['target_group'] = df_pop['target_group'].astype(str)
-    df_pop['population'] = df_pop['population'].astype(int)
+    df_pop = (pd.DataFrame.from_dict(pop_dict, orient='index', columns=['population'])
+          .reset_index()
+          .rename(columns={'index': 'target_group'})
+          .assign(target_group=lambda x: x['target_group'].replace(mydict.rename_dict),
+                  population=lambda x: x['population'].astype(int)))
 
-    db_utils.dump_to_sql(df_pop, 'tv.population')
-    print(df_pop)
+    db_utils.dump_to_sql(df_pop, 'tv.population', if_exists='replace')
 
 if __name__ == "__main__":
     main()

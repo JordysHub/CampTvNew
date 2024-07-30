@@ -219,7 +219,7 @@ def  kansspel_alcohol(df_flights):
 
 ############ MOCK FLIGHTS ################
 
-def create_mock_campaigns(df_flights, min_days_gap=4, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.8, max_mock_campaigns=20, max_attempts=100, min_mock_duration=1):
+def create_mock_campaigns(df_flights, min_days_gap=4, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.8, max_mock_campaigns=10, max_attempts=50, min_mock_duration=1):
     new_mock_campaigns = []
     df_flights['start_date'] = pd.to_datetime(df_flights['start_date'], format='%d%m%y')
     df_flights['end_date'] = pd.to_datetime(df_flights['end_date'], format='%d%m%y')
