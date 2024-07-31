@@ -75,7 +75,7 @@ def process_missing_flights(target_groups):
     # Get all missing flights for every target group
     df_missing_flights = db_utils.query_to_df(Queries.get_missing_flights_per_target_group(target_groups))
 
-    if df_missing_flights is not None and not df_missing_flights.empty:
+    if len(df_missing_flights) != 0:
         logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
 
         # Process dates and target groups
@@ -92,7 +92,7 @@ def updates_flights(target_groups):
     """Retrieve, delete, and update flights with duration mismatch."""
     df_flights_mismatch = db_utils.query_to_df(Queries.get_mismatched_flights_per_target_group(target_groups))
 
-    if df_flights_mismatch is not None and not df_flights_mismatch.empty:
+    if len(df_flights_mismatch) != 0:
         logger.debug(f"Deleting and updating {len(df_flights_mismatch)} flights for {len(target_groups)} target groups...")
 
         # Process dates and target groups
@@ -113,8 +113,8 @@ if __name__ == "__main__":
     args = parse_arguments()
     target_groups = args.tg if args.tg else mydict.target_groups
 
-    # Step 2 & 3: Process missing flights
+    # Step 2: Process missing flights
     process_missing_flights(target_groups)
 
-    # Step 4: Process flights mismatch
+    # Step 3: Process flights mismatch
     updates_flights(target_groups)
