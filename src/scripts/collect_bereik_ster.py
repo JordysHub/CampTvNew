@@ -116,5 +116,5 @@ if __name__ == "__main__":
     # Step 2: Process missing flights
     process_missing_flights(target_groups)
 
-    # Step 3: Process flights mismatch
-    updates_flights(target_groups)
+    # # Step 3: Process flights mismatch
+    # updates_flights(target_groups)

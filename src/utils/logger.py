@@ -89,7 +89,7 @@ def timer_func(func):
 
     return wrap_func
 
-def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, file_path='warnings.xlsx'):
+def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, file_path='camp_tv_new/data/interim/warnings.xlsx'):
     # Create a dictionary for the new row
     new_row = {
         'flight_id': flight_id,

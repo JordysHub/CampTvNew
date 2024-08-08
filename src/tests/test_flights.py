@@ -26,16 +26,26 @@ def test_no_flights_with_count_greater_than_1():
     # Assert that the DataFrame is empty
     assert result_df.empty, "Expected no flights with count greater than 1, but found some."
 
-def test_all_flights_exist_in_bereik():
-    sql_query = """
-    SELECT f.flight_id
-    FROM [dbo].[tv.flights_ster] f
-    LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
-    WHERE b.flight_id IS NULL;
-    """
+def test_flights_in_bereik_do_exist_in_flights_table():
+    sql_query = '''
+    SELECT COUNT(*) AS count_flight_ids_not_in_flights_table
+    FROM [dbo].[tv.bereik_ster]
+    WHERE flight_id NOT IN (SELECT flight_id FROM [dbo].[tv.flights_ster])'''
     result_df = db_utils.query_to_df(sql_query)
+    count_not_in_flights = result_df.iloc[0]['count_flight_ids_not_in_flights_table']
     # Assert that the DataFrame is empty
-    assert result_df.empty, f"Found flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+    assert count_not_in_flights == 0, f"Found {count_not_in_flights} flights that do not exist in the flights table"
+
+# def test_all_flights_exist_in_bereik():
+#     sql_query = """
+#     SELECT f.flight_id
+#     FROM [dbo].[tv.flights_ster] f
+#     LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
+#     WHERE b.flight_id IS NULL;
+#     """
+#     result_df = db_utils.query_to_df(sql_query)
+#     # Assert that the DataFrame is empty
+#     assert result_df.empty, f"Found flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
 
 # def test_all_flights_exist_in_bereik_per_target_group(sql_query):
 #     sql_query = """

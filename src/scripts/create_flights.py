@@ -49,7 +49,6 @@ def create_mocks_from_flights(df_flights: pd.DataFrame, df_spots: pd.DataFrame):
     mock_campaigns_df = finalize_flights(mock_campaigns_df, data_type='mock')
     return mock_campaigns_df
 
-
 if __name__ == "__main__":
     CREATE_MOCKS = False
     table_name = "tv.flights_ster"
@@ -90,9 +89,9 @@ if __name__ == "__main__":
     db_utils.dump_to_sql(df_flights, table_name=table_name)
 
     # delete flights that can't be find in Edge (wrong advertiser/product combi)
-    df_flights_to_delete = pd.read_excel('./data/interim/warnings.xlsx')
-    flights_to_delete = df_flights_to_delete['flight_id'].tolist()
-    db_utils.delete_flights(flights_to_delete, table_name)
+    # df_flights_to_delete = pd.read_excel('./data/interim/warnings.xlsx')
+    # flights_to_delete = df_flights_to_delete['flight_id'].tolist()
+    # db_utils.delete_flights(flights_to_delete, table_name)
 
     if CREATE_MOCKS:
         # Create mocks from flights
