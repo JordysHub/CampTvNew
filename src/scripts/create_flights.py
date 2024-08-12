@@ -5,6 +5,7 @@ import pandas as pd
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.flights_utils as fu
 import camp_tv_new.src.utils.database_utils as db_utils
+from camp_tv_new.src.utils.query_dict import Queries
 
 logger = setup_logger()
 
@@ -54,44 +55,27 @@ if __name__ == "__main__":
     table_name = "tv.flights_ster"
 
     # Read the entire table into a DataFrame
-    df_spots = db_utils.query_to_df(f'SELECT * FROM [dbo].[tv.spots_ster]')
-    existing_flights = db_utils.query_to_df(f'SELECT flight_id, campaign_duration FROM [dbo].[tv.flights_ster]')
+    df_spots = db_utils.query_to_df('SELECT * FROM [dbo].[tv.spots_ster]')
 
-    # Create flights from spots
+    # # Create flights from spots
     df_flights = create_flights_from_spots(df_spots)
-
-    # Check if flights already exist in the database or that they need to be updated with new days
-    flights_to_delete_from_db = []
-    for index, row in df_flights.iterrows():
-        flight_id = row['flight_id']
-        campaign_duration = row['campaign_duration']
-
-        # Check if flight_id exists in the database
-        if flight_id in existing_flights['flight_id'].values:
-            existing_campaign_duration = existing_flights.loc[existing_flights['flight_id'] == flight_id, 'campaign_duration'].iloc[0]
-
-            # Case 1: Campaign duration matches, drop row from df_flights
-            if campaign_duration == existing_campaign_duration:
-                df_flights.drop(index, inplace=True)
-
-            # Case 2: Campaign duration doesn't match, delete from database and dump new flight
-            else:
-                flights_to_delete_from_db.append(flight_id)
-
-    # Calculate alcohol kansspelen for new flights
     logger.debug(f"Calculate alcohol/kansspelen...{len(df_flights)} flights to calculate")
     df_flights = fu.kansspel_alcohol(df_flights)
 
-    # Delete existing flights from the database that need an update
-    logger.debug("Delete flights that need to be updated...")
-    if len(flights_to_delete_from_db) > 0:
-        db_utils.delete_flights(flights_to_delete_from_db, table_name=table_name)
-    db_utils.dump_to_sql(df_flights, table_name=table_name)
+    # Fetch and delete all normal flights (not the mock campaigns), in order to update them
+    # Mock campaigns can be kept, because these will not change anymore
+    df_flights_to_delete = db_utils.query_to_df('SELECT flight_id FROM [dbo].[tv.flights_ster] where mock_campaign = 0')
+    df_flights_to_delete = df_flights_to_delete['flight_id'].to_list()
+    if len(df_flights_to_delete) > 0:
+        db_utils.delete_flights(df_flights_to_delete['flight_id'].to_list(), table_name=table_name)
 
-    # delete flights that can't be find in Edge (wrong advertiser/product combi)
-    # df_flights_to_delete = pd.read_excel('./data/interim/warnings.xlsx')
-    # flights_to_delete = df_flights_to_delete['flight_id'].tolist()
-    # db_utils.delete_flights(flights_to_delete, table_name)
+    # Dump new flights to SQL database
+    db_utils.dump_to_sql(df_flights, table_name=table_name, if_exists='append')
+
+    # Delete the flights from the bereik table, where the campaign duration doesn't match anymore; these flights are updated and bereik need to be fetched again
+    flights_to_delete = db_utils.query_to_df(Queries.delete_bereik_flights_which_dont_match())
+    if len(flights_to_delete) > 0:
+        db_utils.delete_flights(flights_to_delete['flight_id'].to_list(), table_name='tv.bereik_ster')
 
     if CREATE_MOCKS:
         # Create mocks from flights

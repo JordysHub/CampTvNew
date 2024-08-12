@@ -87,27 +87,6 @@ def process_missing_flights(target_groups):
     else:
         logger.debug("No missing flights found.")
 
-@timer_func
-def updates_flights(target_groups):
-    """Retrieve, delete, and update flights with duration mismatch."""
-    df_flights_mismatch = db_utils.query_to_df(Queries.get_mismatched_flights_per_target_group(target_groups))
-
-    if len(df_flights_mismatch) != 0:
-        logger.debug(f"Deleting and updating {len(df_flights_mismatch)} flights for {len(target_groups)} target groups...")
-
-        # Process dates and target groups
-        df_flights_mismatch['start_date'] = pd.to_datetime(df_flights_mismatch['start_date']).dt.strftime("%d%m%y")
-        df_flights_mismatch['end_date'] = pd.to_datetime(df_flights_mismatch['end_date']).dt.strftime("%d%m%y")
-        df_flights_mismatch['missing_target_groups'] = df_flights_mismatch['missing_target_groups'].apply(rename_groups)
-
-        # Delete mismatched flights
-        flight_ids = df_flights_mismatch['flight_id'].tolist()
-        db_utils.delete_flights(flight_ids, 'tv.bereik_ster', target_groups)
-
-        get_bereik(df_flights_mismatch)
-    else:
-        logger.debug("No mismatches between flights.")
-
 if __name__ == "__main__":
     # Step 1: Parse command line arguments
     args = parse_arguments()
@@ -115,6 +94,3 @@ if __name__ == "__main__":
 
     # Step 2: Process missing flights
     process_missing_flights(target_groups)
-
-    # # Step 3: Process flights mismatch
-    # updates_flights(target_groups)

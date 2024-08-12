@@ -124,6 +124,22 @@ class Queries:
         );
         """
 
+    @staticmethod
+    def delete_bereik_flights_which_dont_match():
+        #
+        return """
+        SELECT DISTINCT
+            t1.flight_id
+        FROM
+            [dbo].[tv.bereik_ster] t1
+        JOIN
+            [dbo].[tv.flights_ster] t2
+        ON
+            t1.flight_id = t2.flight_id
+        WHERE
+            t1.campaign_duration != t2.campaign_duration
+        """
+
 
 
 
