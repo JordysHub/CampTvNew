@@ -8,8 +8,8 @@ load_dotenv()
 # Set up logging to a file
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s',
-                    filename='pipeline.log',  # Specify the log file name
-                    filemode='w')  # Use 'w' to overwrite the log file each time
+                    filename='pipeline.log',
+                    filemode='w')
 
 logger = logging.getLogger(__name__)
 

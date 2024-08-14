@@ -19,7 +19,6 @@ def get_bereik(index, row, token: str):
     Parameters:
     - index: int, the index of the row
     - row: pandas Series, the row containing flight information
-    - target_group: str, the target group for the report
     - token: str, the API token for authentication
 
     Returns:

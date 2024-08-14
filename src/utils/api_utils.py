@@ -65,7 +65,6 @@ def call_bereik_report_tv(target_groups: str, start_date: str, end_date: str, to
     - token: the authorization token for the API request
     - advertiser: the advertiser string
     - product: product string
-    - only_ster: if True, only STER channels are included in the report
     """
     # target_group = dict.rename_dict.get(target_group, target_group)
 
