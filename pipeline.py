@@ -40,7 +40,7 @@ def main():
 
         run_script("src/scripts/create_flights.py")
 
-        run_script("src/scripts/collect_bereik.py")
+        run_script("src/scripts/collect_bereik_ster.py")
 
         run_script("src/scripts/calculate_pop.py")
 
