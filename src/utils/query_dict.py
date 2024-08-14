@@ -49,60 +49,9 @@ class Queries:
         """
 
     @staticmethod
-    def get_missing_flights_per_target_group(target_groups):
-        union_all_query = " UNION ALL ".join([f"SELECT '{group}' AS target_group" for group in target_groups])
-        return f"""
-        -- Step 1: Create all possible combinations of flight_id and target_group
-        WITH AllCombinations AS (
-            SELECT
-                f.flight_id,
-                tg.target_group
-            FROM [dbo].[tv.flights_ster] f
-            CROSS JOIN (
-                {union_all_query}
-            ) tg
-        ),
-        -- Step 2: Identify missing combinations of flight_id and target_group
-        MissingCombinations AS (
-            SELECT
-                ac.flight_id,
-                ac.target_group
-            FROM AllCombinations ac
-            LEFT JOIN [dbo].[tv.bereik_ster] b ON ac.flight_id = b.flight_id AND ac.target_group = b.target_group
-            WHERE b.flight_id IS NULL
-        ),
-        -- Step 3: Aggregate missing target_groups for each flight_id
-        AggregatedMissingTargetGroups AS (
-            SELECT
-                flight_id,
-                STRING_AGG(target_group, ', ') AS missing_target_groups
-            FROM MissingCombinations
-            GROUP BY flight_id
-        )
-        -- Step 4: Retrieve flight details and include the aggregated missing target groups
-        SELECT f.[flight_id]
-            ,[advertiser]
-            ,[product]
-            ,[start_date]
-            ,[end_date]
-            ,[campaign_duration]
-            ,[npo1_grp]
-            ,[npo2_grp]
-            ,[npo3_grp]
-            ,[regio_grp]
-            ,[ster_grp]
-            ,[mock_campaign]
-            ,[alcohol_kansspelen],
-            COALESCE(am.missing_target_groups, '') AS missing_target_groups
-        FROM [dbo].[tv.flights_ster] f
-        LEFT JOIN AggregatedMissingTargetGroups am ON f.flight_id = am.flight_id
-        WHERE am.missing_target_groups IS NOT NULL
-        """
-
-    @staticmethod
     def delete_overlapping_flights():
-        # When fetching older data, these newly calculated campaigns can overlap with the already existing campaigns.
-        return f"""
+    # When fetching older data, these newly calculated campaigns can overlap with the already existing campaigns.
+        return """
         WITH overlapping_campaigns AS (
         SELECT
             old.flight_id AS old_flight_id,
@@ -126,7 +75,7 @@ class Queries:
 
     @staticmethod
     def delete_bereik_flights_which_dont_match():
-        #
+    #
         return """
         SELECT DISTINCT
             t1.flight_id

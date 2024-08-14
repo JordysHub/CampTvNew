@@ -6,7 +6,6 @@ import os
 import argparse
 import json
 import time
-from icecream import ic
 from dotenv import load_dotenv
 from utils.logger import setup_logger
 

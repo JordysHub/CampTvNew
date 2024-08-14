@@ -1,9 +1,7 @@
-import pytest
 import camp_tv_new.src.utils.database_utils as db_utils
 
-
 def test_no_flights_with_count_greater_than_3():
-    #There cant be more than 3 of the same flights per tg (3 dayparts)
+    #There cant be more than 3 of the same flight per target_group (3 dayparts)
     sql_query = """
     SELECT target_group, flight_id
     FROM [dbo].[tv.bereik_ster]

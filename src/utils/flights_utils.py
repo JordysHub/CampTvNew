@@ -10,7 +10,6 @@ from tqdm import tqdm
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     # preprocessing
-    # df = df[['advertiser', 'product', 'date', 'npo1_grp', 'npo2_grp', 'npo3_grp', 'regio_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']].drop_duplicates()
     df = df[['advertiser', 'product', 'date', 'npo1_grp', 'npo2_grp', 'npo3_grp', 'regio_grp', 'ster_grp']].drop_duplicates()
     df = df.sort_values(by=["advertiser", "product", "date"]).reset_index(drop=True)
     df['date'] = pd.to_datetime(df['date'])
@@ -174,20 +173,20 @@ def generate_uuid_from_columns(row, data_type):
         print("Invalid UUID format:", hashed_value)
         return None
 
-def update_flights(df_flights_old, df_flights_new):
+# def update_flights(df_flights_old, df_flights_new):
 
-    # concat dataframes
-    df_concat = pd.concat([df_flights_old, df_flights_new])
-    # check which flights are updated with a new end_date/campaign_duration
-    grouped = df_concat.groupby('flight_id').filter(lambda x: len(x) > 1 and len(x.drop_duplicates()) > 1)
-    grouped = grouped.sort_values(by=['flight_id', 'campaign_duration'], ascending=[True, False]).groupby('flight_id').head(1)
-    df_flights_updated = grouped.sort_values(by='flight_id')
+#     # concat dataframes
+#     df_concat = pd.concat([df_flights_old, df_flights_new])
+#     # check which flights are updated with a new end_date/campaign_duration
+#     grouped = df_concat.groupby('flight_id').filter(lambda x: len(x) > 1 and len(x.drop_duplicates()) > 1)
+#     grouped = grouped.sort_values(by=['flight_id', 'campaign_duration'], ascending=[True, False]).groupby('flight_id').head(1)
+#     df_flights_updated = grouped.sort_values(by='flight_id')
 
-    # check which flights are totally new
-    new_flight_ids = set(df_flights_new['flight_id']) - set(df_flights_old['flight_id'])
-    df_flights_new_unique = df_flights_new[df_flights_new['flight_id'].isin(new_flight_ids)]
+#     # check which flights are totally new
+#     new_flight_ids = set(df_flights_new['flight_id']) - set(df_flights_old['flight_id'])
+#     df_flights_new_unique = df_flights_new[df_flights_new['flight_id'].isin(new_flight_ids)]
 
-    return df_flights_updated, df_flights_new_unique
+#     return df_flights_updated, df_flights_new_unique
 
 def  kansspel_alcohol(df_flights):
     df_spots = pd.read_excel("././data/interim/all_spots_ster.xlsx")

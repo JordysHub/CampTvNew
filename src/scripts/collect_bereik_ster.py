@@ -1,17 +1,21 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+This module collects data from the Bereik API and stores it in the database.
+"""
+
+import pandas as pd
+import time
+from tqdm import tqdm
+import argparse
+
 import camp_tv_new.src.utils.bereik_utils as bereik_utils
 import camp_tv_new.src.utils.api_utils as api_utils
 import camp_tv_new.src.utils.database_utils as db_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
 from camp_tv_new.src.utils.query_dict import Queries
 import camp_tv_new.src.utils.dictionaries as mydict
-
-import pandas as pd
-import time
-from tqdm import tqdm
-import argparse
 
 # Setup logger
 logger = setup_logger()
@@ -30,15 +34,6 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def rename_groups(s):
-    # Define your renaming rules in a dictionary
-    renaming_rules = mydict.rename_column_for_api
-
-    # Replace according to the rules
-    for old, new in renaming_rules.items():
-        s = s.replace(old, new)
-    return s
-
 @timer_func
 def get_bereik(df_missing_flights):
     """
@@ -47,8 +42,8 @@ def get_bereik(df_missing_flights):
     current_token_time = time.time()
     token = api_utils.get_api_token()
 
-    for idx, row in tqdm(df_missing_flights.iterrows(), total=len(df_missing_flights), position=0, ncols=120,
-                         desc=f"Processing missing flights for target groups",
+    for _, row in tqdm(df_missing_flights.iterrows(), total=len(df_missing_flights), position=0, ncols=120,
+                         desc="Processing missing flights for target groups",
                          bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
 
         if time.time() - current_token_time >= 3000:
@@ -67,13 +62,13 @@ def get_bereik(df_missing_flights):
                 db_utils.dump_to_sql(processed_df, 'tv.bereik_ster')
 
         except Exception as e:
-            logger.error(f"Error fetching bereik for flight {row.name}: {str(e)}")
+            logger.error("Error fetching bereik for flight %s: %s" % (row.name, str(e)))
 
 @timer_func
-def process_missing_flights(target_groups):
+def process_missing_flights(tgs):
     """Retrieve and process missing flights based on target groups."""
     # Get all missing flights for every target group
-    df_missing_flights = db_utils.query_to_df(Queries.get_missing_flights_per_target_group(target_groups))
+    df_missing_flights = db_utils.query_to_df(Queries.get_missing_flights_per_target_group(tgs))
 
     if len(df_missing_flights) != 0:
         logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
@@ -81,7 +76,7 @@ def process_missing_flights(target_groups):
         # Process dates and target groups
         df_missing_flights['start_date'] = pd.to_datetime(df_missing_flights['start_date']).dt.strftime("%d%m%y")
         df_missing_flights['end_date'] = pd.to_datetime(df_missing_flights['end_date']).dt.strftime("%d%m%y")
-        df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(rename_groups)
+        df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(bereik_utils.rename_groups)
 
         get_bereik(df_missing_flights)
     else:

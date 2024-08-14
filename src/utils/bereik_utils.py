@@ -51,10 +51,19 @@ def convert_to_list(string):
     except (ValueError, SyntaxError):
         return string  # Return as is if not convertible to list
 
+def rename_groups(s):
+    # Define your renaming rules in a dictionary
+    renaming_rules = mydict.rename_column_for_api
+
+    # Replace according to the rules
+    for old, new in renaming_rules.items():
+        s = s.replace(old, new)
+    return s
+
 def process_row(row):
 
     new_row = row[:6].to_dict()
-    for col_idx, cell in enumerate(row[6:], start=6):
+    for _, cell in enumerate(row[6:], start=6):
         if isinstance(cell, float) and np.isnan(cell):
             continue
         # Extract information from the list

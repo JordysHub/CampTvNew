@@ -117,7 +117,7 @@ def convert_to_list(string):
 
 def process_row(row):
     new_row = row[:6].to_dict()
-    for col_idx, cell in enumerate(row[6:], start=6):
+    for _, cell in enumerate(row[6:], start=6):
         if isinstance(cell, float) and np.isnan(cell):
             continue
         # Extract information from the list
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     current_token_time = time.time()
     token = api_utils.get_api_token()
 
-    for idx, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
+    for _, row in tqdm(df_flights.iterrows(), total=len(df_flights), position=0, ncols=120,
                          bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
 
         if time.time() - current_token_time >= 3000:

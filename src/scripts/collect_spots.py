@@ -1,5 +1,6 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""This module collects new spots from Edge API and stores them in the database."""
 
 from camp_tv_new.src.utils import api_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
@@ -41,6 +42,30 @@ def parse_arguments():
 
 @timer_func
 def get_spots(missing_dates: list) -> pd.DataFrame:
+    """
+    Fetches and processes spots data for the given list of missing dates.
+
+    Args:
+        missing_dates (list): A list of missing dates for which spots data needs to be fetched.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the fetched and processed spots data.
+
+    Description:
+        This function fetches spots data for the given list of missing dates and processes it.
+        It first checks if the `missing_dates` list is not empty. If it is not empty, it logs
+        the start and end dates of the data fetching process. It then initializes a DataFrame
+        `df_spots` to store the fetched spots data.
+
+        After fetching all the spots data, it cleans the hour column of the `df_spots` DataFrame
+        using the `clean_hour_column` function from the `proc_spots` module. It then saves the
+        DataFrame to an Excel file before further processing.
+
+        The `df_spots` DataFrame is then processed further by counting the spots and grouping
+        them using the `count_spots_and_grp` function from the `proc_spots` module. It also
+        generates a unique identifier for each spot using the `generate_uuid_from_columns`
+        function from the `flights_utils` module and adds it as a new column named 'ID'.
+    """
     df_spots = pd.DataFrame()
 
     if missing_dates:
@@ -49,7 +74,7 @@ def get_spots(missing_dates: list) -> pd.DataFrame:
         token = api_utils.get_api_token()
 
         for day in tqdm(missing_dates, total=len(missing_dates), position=0, ncols=120,
-                         desc=f"Fetching spots data",
+                         desc="Fetching spots data",
                          bar_format="{desc}: {percentage:.0f}%|{bar}| {n}/{total} Elapsed: {elapsed} Remaining: {remaining}"):
 
             if time.time() - current_token_time >= 3000:
@@ -75,6 +100,9 @@ def get_spots(missing_dates: list) -> pd.DataFrame:
     return df_spots
 
 def save_to_excel(df: pd.DataFrame):
+    """
+    Save the given DataFrame to an Excel file. It concatenates the given DataFrame with the existing one and drops any duplicate spots.
+    """
     try:
         df['date'] = pd.to_datetime(df['date']).dt.date
         df_all_spots = pd.read_excel("../data/interim/all_spots_ster.xlsx", engine='openpyxl')
@@ -89,6 +117,20 @@ def save_to_excel(df: pd.DataFrame):
         logger.error(f"Failed to save to Excel: {e}")
 
 def fetch_spots_for_date(day_str: str, token: str) -> pd.DataFrame:
+    """
+    Fetches spots data for a given date using the provided token and returns a DataFrame.
+
+    Args:
+        day_str (str): The date in string format (ddmmyy).
+        token (str): The token used for authentication.
+
+    Returns:
+        pd.DataFrame: The DataFrame containing the fetched spots data. If an error occurs during the process, an empty DataFrame is returned.
+
+    Note:
+        The function calls the `call_kdh_getter_report` function from the `api_utils` module to fetch the spots data for the given date and token.
+        It then processes the fetched data using the `process_spots_day` function from the `proc_spots` module.
+    """
     try:
         df = api_utils.call_kdh_getter_report(day_str, token)
         df = proc_spots.process_spots_day(df, pd.to_datetime(day_str, format="%d%m%y"))
@@ -102,8 +144,8 @@ def get_missing_dates(start_date, end_date) -> list:
     Get the missing dates from the spots db.
 
     Parameters:
-        start_date (str): The start date for the date range in DDMMYY format.
-        end_date (str): The end date for the date range in DDMMYY format.
+        start_date (str): The start date for the date range in ddmmyy format.
+        end_date (str): The end date for the date range in ddmmyy format.
         existing_dates (list): List of existing dates.
 
     Returns:

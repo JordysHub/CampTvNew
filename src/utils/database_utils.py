@@ -2,7 +2,7 @@ import camp_tv_new.src.utils.connection_utils as con_utils
 from camp_tv_new.src.utils.logger import setup_logger, timer_func
 
 import pandas as pd
-from sqlalchemy import delete, text
+from sqlalchemy import text
 
 
 logger = setup_logger()

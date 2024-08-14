@@ -39,7 +39,7 @@ def prep_dataframe(df_bereik: pd.DataFrame) -> pd.DataFrame:
     # remove rows where campaigns have 0 GRP for Ster
     df_bereik = df_bereik[(df_bereik['ster_1bereik'] != 0) | (df_bereik['ster_grp'] != 0)]
 
-    df = df_bereik[["flight_id", "start_date", "end_date", "advertiser", "product", "daypart", 
+    df = df_bereik[["flight_id", "start_date", "end_date", "advertiser", "product", "daypart",
                     "npo1_grp", "npo2_grp", "npo3_grp", "ster_grp",
                     "npo1_1bereik", "npo2_1bereik", "npo3_1bereik", "ster_1bereik"]].reset_index(drop=True)
 

@@ -64,7 +64,7 @@ def convert_to_list(string):
 
 def process_row(row):
     new_row = row[:5].to_dict()
-    for col_idx, cell in enumerate(row[5:], start=6):
+    for _, cell in enumerate(row[5:], start=6):
         if isinstance(cell, float) and np.isnan(cell):
             continue
         # Extract information from the list

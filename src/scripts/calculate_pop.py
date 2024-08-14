@@ -1,5 +1,6 @@
 # !/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""Updates population per target group in the SQL database"""
 
 # region imports and warnings
 import camp_tv_new.src.utils.api_utils as api_utils
@@ -10,10 +11,6 @@ import camp_tv_new.src.utils.database_utils as db_utils
 from dotenv import load_dotenv
 import pandas as pd
 
-# endregion
-
-# Load environment variables: determines whether to retrieve data exclusively from Ster/NPO.
-load_dotenv()
 # setup logger
 logger = setup_logger()
 
