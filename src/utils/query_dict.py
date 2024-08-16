@@ -1,34 +1,34 @@
 class Queries:
     @staticmethod
-    def get_mismatched_flights_per_target_group(target_groups):
+    def get_missing_flights_per_target_group(target_groups):
         target_groups_str = ', '.join(f"'{tg}'" for tg in target_groups)
         return f"""
-        -- Step 1: Identify mismatched flights and their target groups
-        WITH MismatchedFlights AS (
+        WITH AllCombinations AS (
             SELECT
                 f.flight_id,
                 b.target_group
             FROM [dbo].[tv.flights_ster] f
-            INNER JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
-            WHERE f.campaign_duration <> b.campaign_duration
-            AND b.target_group IN ({target_groups_str})
+            CROSS JOIN (
+                SELECT DISTINCT target_group
+                FROM [dbo].[tv.bereik_ster]
+                WHERE target_group IN ({target_groups_str})
+            ) b
         ),
-        -- Step 2: Select distinct target_groups for each flight_id
-        DistinctMismatches AS (
-            SELECT DISTINCT
-                flight_id,
-                target_group
-            FROM MismatchedFlights
+        MissingPairs AS (
+            SELECT
+                ac.flight_id,
+                ac.target_group
+            FROM AllCombinations ac
+            LEFT JOIN [dbo].[tv.bereik_ster] b ON ac.flight_id = b.flight_id AND ac.target_group = b.target_group
+            WHERE b.flight_id IS NULL
         ),
-        -- Step 3: Aggregate distinct mismatched target groups for each flight
-        AggregatedMismatches AS (
+        AggregatedMissingTargetGroups AS (
             SELECT
                 flight_id,
-                STRING_AGG(target_group, ', ') AS mismatched_target_groups
-            FROM DistinctMismatches
+                STRING_AGG(target_group, ', ') AS missing_target_groups
+            FROM MissingPairs
             GROUP BY flight_id
         )
-        -- Step 4: Retrieve flight details and add the mismatched target groups column
         SELECT f.[flight_id]
             ,[advertiser]
             ,[product]
@@ -42,10 +42,11 @@ class Queries:
             ,[ster_grp]
             ,[mock_campaign]
             ,[alcohol_kansspelen],
-            COALESCE(am.mismatched_target_groups, '') AS mismatched_target_groups
+            COALESCE(am.missing_target_groups, '') AS missing_target_groups
         FROM [dbo].[tv.flights_ster] f
-        LEFT JOIN AggregatedMismatches am ON f.flight_id = am.flight_id
-        WHERE am.mismatched_target_groups IS NOT NULL
+        LEFT JOIN AggregatedMissingTargetGroups am ON f.flight_id = am.flight_id
+        WHERE am.missing_target_groups IS NOT NULL
+        order by start_date
         """
 
     @staticmethod
