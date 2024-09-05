@@ -37,12 +37,12 @@ def run_script(script_name):
 def main():
     try:
         run_script("src/scripts/collect_spots.py")
-
         run_script("src/scripts/create_flights.py")
-
         run_script("src/scripts/collect_bereik_ster.py")
-
         run_script("src/scripts/calculate_pop.py")
+
+        # Run pytest at the end
+        run_script("-m pytest")
 
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")

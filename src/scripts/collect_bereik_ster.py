@@ -69,19 +69,18 @@ def process_missing_flights(tgs):
     """Retrieve and process missing flights based on target groups."""
     # Get all missing flights for every target group
     df_missing_flights = db_utils.query_to_df(Queries.get_missing_flights_per_target_group(tgs))
-    print(df_missing_flights.head())
 
-    # if len(df_missing_flights) != 0:
-    #     logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
+    if len(df_missing_flights) != 0:
+        logger.debug(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
 
-    #     # Process dates and target groups
-    #     df_missing_flights['start_date'] = pd.to_datetime(df_missing_flights['start_date']).dt.strftime("%d%m%y")
-    #     df_missing_flights['end_date'] = pd.to_datetime(df_missing_flights['end_date']).dt.strftime("%d%m%y")
-    #     df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(bereik_utils.rename_groups)
+        # Process dates and target groups
+        df_missing_flights['start_date'] = pd.to_datetime(df_missing_flights['start_date']).dt.strftime("%d%m%y")
+        df_missing_flights['end_date'] = pd.to_datetime(df_missing_flights['end_date']).dt.strftime("%d%m%y")
+        df_missing_flights['missing_target_groups'] = df_missing_flights['missing_target_groups'].apply(bereik_utils.rename_groups)
 
-    #     get_bereik(df_missing_flights)
-    # else:
-    #     logger.debug("No missing flights found.")
+        get_bereik(df_missing_flights)
+    else:
+        logger.debug("No missing flights found.")
 
 if __name__ == "__main__":
     # Step 1: Parse command line arguments

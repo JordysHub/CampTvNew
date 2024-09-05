@@ -7,7 +7,7 @@ from camp_tv_new.src.utils.logger import setup_logger, timer_func
 import camp_tv_new.src.utils.process_spots as proc_spots
 import camp_tv_new.src.utils.flights_utils as fu
 import camp_tv_new.src.utils.database_utils as db_utils
-from camp_tv_new.src.utils.query_dict import query_dict
+from camp_tv_new.src.utils.query_dict import Queries
 
 import argparse
 import os
@@ -155,7 +155,7 @@ def get_missing_dates(start_date, end_date) -> list:
     end_date = pd.to_datetime(end_date, format='%d%m%y')
 
     # Get existing dates in db
-    existing_dates_df = db_utils.query_to_df(query_dict['get_existing_dates_from_spots'])
+    existing_dates_df = db_utils.query_to_df(Queries.get_existing_dates_from_spots())
 
     # Filter existing dates for all months except August 2023
     existing_dates_df['date'] = pd.to_datetime(existing_dates_df['date'], format='%d%m%y')

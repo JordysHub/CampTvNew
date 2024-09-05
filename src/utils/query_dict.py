@@ -90,15 +90,13 @@ class Queries:
             t1.campaign_duration != t2.campaign_duration
         """
 
-
-
-
-
-
-
-
-
-
+    @staticmethod
+    def get_existing_dates_from_spots():
+    #
+        return """
+        SELECT DISTINCT [date]
+        FROM [dbo].[tv.spots_ster]
+        """
 
 
 
