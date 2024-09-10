@@ -1,7 +1,5 @@
-import utils.dictionaries as mydict
+import src.utils.dictionaries as mydict
 import pandas as pd
-# from line_profiler import LineProfiler
-
 
 def calculate_total_overlap(row, period_list=None) -> int:
 

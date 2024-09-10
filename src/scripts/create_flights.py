@@ -6,12 +6,12 @@ A flight keeps running when within 8 days a spot of the same advertiser and prod
 A flight can not run longer than 61 days.
 """
 
-import pandas as pd
 from src.utils.logger import setup_logger, timer_func
 import src.utils.flights_utils as fu
 import src.utils.database_utils as db_utils
 from src.utils.query_dict import Queries
 
+import pandas as pd
 logger = setup_logger()
 
 def preprocess_flights(df_spots: pd.DataFrame):
