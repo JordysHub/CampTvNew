@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 """This module collects new spots from Edge API and stores them in the database."""
 
-from camp_tv_new.src.utils import api_utils
-from camp_tv_new.src.utils.logger import setup_logger, timer_func
-import camp_tv_new.src.utils.process_spots as proc_spots
-import camp_tv_new.src.utils.flights_utils as fu
-import camp_tv_new.src.utils.database_utils as db_utils
-from camp_tv_new.src.utils.query_dict import Queries
+from src.utils import api_utils
+from src.utils.logger import setup_logger, timer_func
+import src.utils.process_spots as proc_spots
+import src.utils.flights_utils as fu
+import src.utils.database_utils as db_utils
+from src.utils.query_dict import Queries
 
 import argparse
 import os

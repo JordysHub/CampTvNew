@@ -7,10 +7,10 @@ A flight can not run longer than 61 days.
 """
 
 import pandas as pd
-from camp_tv_new.src.utils.logger import setup_logger, timer_func
-import camp_tv_new.src.utils.flights_utils as fu
-import camp_tv_new.src.utils.database_utils as db_utils
-from camp_tv_new.src.utils.query_dict import Queries
+from src.utils.logger import setup_logger, timer_func
+import src.utils.flights_utils as fu
+import src.utils.database_utils as db_utils
+from src.utils.query_dict import Queries
 
 logger = setup_logger()
 
@@ -105,46 +105,50 @@ if __name__ == "__main__":
     CREATE_MOCKS = False
     table_name = "tv.flights_ster"
 
-    # Read the entire table into a DataFrame
-    df_spots = db_utils.query_to_df('SELECT * FROM [dbo].[tv.spots_ster]')
-
-    # Create flights from spots
     try:
+        # Read spots and create flights from spots
+        df_spots = db_utils.query_to_df('SELECT * FROM [dbo].[tv.spots_ster]')
         df_flights = create_flights_from_spots(df_spots)
-        logger.debug(f"Calculate alcohol/kansspelen...{len(df_flights)} flights to calculate")
-        df_flights = fu.kansspel_alcohol(df_flights)
-    except Exception as e:
-        logger.error(f"Failed to create flights from spots: {e}")
 
-    # Fetch and delete all normal flights (not the mock campaigns), in order to update them
-    # Mock campaigns can be kept, because these will not change anymore
+        # Fetch existing flights from databes and delete double entries from new calculated flights df_flights
+        existing_flights = db_utils.query_to_df('SELECT flight_id, campaign_duration, start_date FROM [dbo].[tv.flights_ster] where mock_campaign = 0')
+        merged = df_flights.merge(existing_flights, on=['flight_id', 'campaign_duration', 'start_date'], how='left', indicator=True)
+        df_flights_filtered = merged[merged['_merge'] == 'left_only'].drop(columns=['_merge'])
+
+        # Log and process filtered flights
+        logger.debug("Processing and updating filtered flights...")
+        if not df_flights_filtered.empty:
+            logger.debug("Calculating alcohol/kansspelen...")
+            df_flights_filtered = fu.kansspel_alcohol(df_flights_filtered)
+
+            # Delete old flights and dump new flights
+            logger.debug("Dump flights in database...")
+            db_utils.delete_flights(df_flights_filtered['flight_id'].tolist(), table_name=table_name)
+            db_utils.dump_to_sql(df_flights_filtered, table_name=table_name, if_exists='append')
+
+    except Exception as e:
+        logger.error(f"Failed during flight processing: {e}")
+
     try:
-        df_flights_to_delete = db_utils.query_to_df('SELECT flight_id FROM [dbo].[tv.flights_ster] where mock_campaign = 0')
-        if len(df_flights_to_delete) > 0:
-            db_utils.delete_flights(df_flights_to_delete['flight_id'].to_list(), table_name=table_name)
-
-        # Dump new flights to SQL database
-        db_utils.dump_to_sql(df_flights, table_name=table_name, if_exists='append')
-
-        # Delete the flights from the bereik table, where the campaign duration doesn't match anymore; these flights are updated and bereik need to be fetched again
+        # Delete flights from bereik table where campaign duration doesn’t match with the new updated flights
         flights_to_delete = db_utils.query_to_df(Queries.delete_bereik_flights_which_dont_match())
-        if len(flights_to_delete) > 0:
-            db_utils.delete_flights(flights_to_delete['flight_id'].to_list(), table_name='tv.bereik_ster')
+        if not flights_to_delete.empty:
+            db_utils.delete_flights(flights_to_delete['flight_id'].tolist(), table_name='tv.bereik_ster')
+
     except Exception as e:
-        logger.error(f"Failed to delete flights: {e}")
+        logger.error(f"Failed to delete flights from bereik table: {e}")
 
+    # if CREATE_MOCKS:
+    #     # Create mocks from flights
+    #     df_mocks = create_mocks_from_flights(df_flights, df_spots)
+    #     # Check existing primary keys
+    #     df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
+    #     # Calculate alcohol kansspelen
+    #     logger.debug("Calculate alcohol/kansspelen for mocks...")
+    #     df_mocks_to_insert = fu.kansspel_alcohol(df_mocks_to_insert)
 
-    if CREATE_MOCKS:
-        # Create mocks from flights
-        df_mocks = create_mocks_from_flights(df_flights, df_spots)
-        # Check existing primary keys
-        df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
-        # Calculate alcohol kansspelen
-        logger.debug("Calculate alcohol/kansspelen for mocks...")
-        df_mocks_to_insert = fu.kansspel_alcohol(df_mocks_to_insert)
-
-        if df_mocks_to_insert.shape[0] == 0:
-            logger.info(f"No new rows to insert for {table_name}")
-        else:
-            logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
-            db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)
+    #     if df_mocks_to_insert.shape[0] == 0:
+    #         logger.info(f"No new rows to insert for {table_name}")
+    #     else:
+    #         logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
+    #         db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)

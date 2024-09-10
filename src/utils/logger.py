@@ -5,6 +5,10 @@ import os
 import pandas as pd
 
 def setup_logger(base_log_path="src/scripts/logs/", console_logging=True):
+    # Ensure the log directory exists
+    if not os.path.exists(base_log_path):
+        os.makedirs(base_log_path)
+
     # Create logger instance
     logger = logging.getLogger()
 
@@ -108,7 +112,6 @@ def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, f
 
         # Check if the flight_id already exists
         if not df_existing[df_existing['flight_id'] == flight_id].empty:
-            print(f"Row already exists for flight {flight_id}")
             return
 
         # Append new row to the existing dataframe
@@ -120,4 +123,3 @@ def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, f
 
     # Save the dataframe to the Excel file
     df_existing.to_excel(file_path, index=False)
-    print(f"Logged warning for flight {flight_id}")

@@ -1,7 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
-from camp_tv_new.src.utils.logger import timer_func
+from src.utils.logger import timer_func
 
 load_dotenv()
 

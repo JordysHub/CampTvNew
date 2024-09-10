@@ -1,6 +1,6 @@
-import camp_tv_new.src.utils.api_utils as api_utils
-from camp_tv_new.src.utils.logger import setup_logger, log_warning_to_excel
-import camp_tv_new.src.utils.dictionaries as mydict
+import src.utils.api_utils as api_utils
+from src.utils.logger import setup_logger, log_warning_to_excel
+import src.utils.dictionaries as mydict
 
 import ast
 import pandas as pd

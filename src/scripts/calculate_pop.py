@@ -3,10 +3,10 @@
 """Updates population per target group in the SQL database"""
 
 # region imports and warnings
-import camp_tv_new.src.utils.api_utils as api_utils
-import camp_tv_new.src.utils.dictionaries as mydict
-from camp_tv_new.src.utils.logger import setup_logger
-import camp_tv_new.src.utils.database_utils as db_utils
+import src.utils.api_utils as api_utils
+import src.utils.dictionaries as mydict
+from src.utils.logger import setup_logger
+import src.utils.database_utils as db_utils
 
 from dotenv import load_dotenv
 import pandas as pd
@@ -37,6 +37,7 @@ def fetch_and_process_data(target_groups, token):
 
 def main():
     target_groups = [mydict.rename_column_for_api.get(tg, tg) for tg in mydict.target_groups]
+    target_groups = ['DAG 25-59' if tg == 'DAG25-59' else tg for tg in target_groups]
     token = api_utils.get_api_token()
 
     pop_dict = fetch_and_process_data(target_groups, token)

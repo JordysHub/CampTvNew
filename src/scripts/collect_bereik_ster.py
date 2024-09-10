@@ -10,12 +10,12 @@ import time
 from tqdm import tqdm
 import argparse
 
-import camp_tv_new.src.utils.bereik_utils as bereik_utils
-import camp_tv_new.src.utils.api_utils as api_utils
-import camp_tv_new.src.utils.database_utils as db_utils
-from camp_tv_new.src.utils.logger import setup_logger, timer_func
-from camp_tv_new.src.utils.query_dict import Queries
-import camp_tv_new.src.utils.dictionaries as mydict
+import src.utils.bereik_utils as bereik_utils
+import src.utils.api_utils as api_utils
+import src.utils.database_utils as db_utils
+from src.utils.logger import setup_logger, timer_func
+from src.utils.query_dict import Queries
+import src.utils.dictionaries as mydict
 
 # Setup logger
 logger = setup_logger()

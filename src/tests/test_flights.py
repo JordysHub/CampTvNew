@@ -1,10 +1,10 @@
-import camp_tv_new.src.utils.database_utils as db_utils
+import src.utils.database_utils as db_utils
 import pytest
 import pandas as pd
 
 @pytest.fixture(scope="module", autouse=True)
 def preprocess():
-    # some flights have a mismatch in Edge. These flights are logged in warnings.xlsx and can be deleted from the db, before runni ng the tests
+    # some flights have a mismatch in Edge. These flights are logged in warnings.xlsx and can be deleted from the db, before running the tests
     warnings_df = pd.read_excel('data/interim/warnings.xlsx')
     wrong_flights = warnings_df['flight_id'].to_list()
     flights = ', '.join(f"'{flight}'" for flight in wrong_flights)
@@ -13,7 +13,7 @@ def preprocess():
     print(f"{len(flights)} deleted...")
 
 def test_no_flights_with_count_greater_than_3():
-    #There cant be more than 3 of the same flight per target_group (3 dayparts)
+    #There can't be more than 3 of the same flight per target_group (3 dayparts) in the bereik table
     sql_query = """
     SELECT target_group, flight_id
     FROM [dbo].[tv.bereik_ster]

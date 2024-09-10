@@ -1,10 +1,10 @@
 
-import camp_tv_new.src.utils.bereik_utils as bereik_utils
-import camp_tv_new.src.utils.api_utils as api_utils
-import camp_tv_new.src.utils.database_utils as db_utils
-from camp_tv_new.src.utils.logger import setup_logger, timer_func
-import camp_tv_new.src.utils.dictionaries as mydict
-from camp_tv_new.src.utils.query_dict import query_dict
+import src.utils.bereik_utils as bereik_utils
+import src.utils.api_utils as api_utils
+import src.utils.database_utils as db_utils
+from src.utils.logger import setup_logger, timer_func
+import src.utils.dictionaries as mydict
+from src.utils.query_dict import query_dict
 import pandas as pd
 import time
 from tqdm import tqdm
