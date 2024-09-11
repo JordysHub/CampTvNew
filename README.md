@@ -1,4 +1,4 @@
-# **sProject Description**
+# **Project Description**
 
 # **Project Overview**
 
