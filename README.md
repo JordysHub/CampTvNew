@@ -1,5 +1,5 @@
 # **Project Description**
-
+The project aims to forecast the 1+ reach for Ster campaigns with a ML model by leveraging key features such as GRPs, time-based factors, and (sporting) events. It automates the entire process, gathering all the necessary data to train the machine learning model used for these predictions.
 
 # **Project Overview**
 ```
@@ -46,6 +46,11 @@
     └── requirements.txt
 ```
 # **Installation Instructions**:
+- git pull request from `https://dev.azure.com/ster-nl/DataScience/_git/CampTvNew`
+- create virtual environment with `py -3.11 -m venv .venv` or within VScode
+- activate virtual environment with `.venv\Scripts\activate.ps1`
+- install requirements with `pip install -r requirements.txt`
+- set terminal path in main folder and run pipeline with `pyton pipeline.py` or any script (for example python src/scripts/collect_spots.py)
 
 # **Usage**:
 
