@@ -50,11 +50,24 @@ The project aims to forecast the 1+ reach for Ster campaigns with a ML model by 
 - create virtual environment with `py -3.11 -m venv .venv` or within VScode
 - activate virtual environment with `.venv\Scripts\activate.ps1`
 - install requirements with `pip install -r requirements.txt`
-- set terminal path in main folder and run pipeline with `pyton pipeline.py` or any script (for example python src/scripts/collect_spots.py)
 
 # **Usage**:
+- set terminal path in main folder and run pipeline with `pyton pipeline.py` or any script (for example `python src/scripts/collect_spots.py`)
+
+See wiki for running all the scripts and their possible arguments
 
 # **Requirements/Dependencies:**
+colorlog
+numpy
+pandas
+setuptools==69.5.1
+SQLAlchemy==2.0.31
+tqdm==4.66.2
+python-dotenv
+requests
+openpyxl==3.1.5
+pyodbc
+pytest
 
 # **Contributing:**
 
