@@ -57,17 +57,17 @@ The project aims to forecast the 1+ reach for Ster campaigns with a ML model by 
 See wiki for running all the scripts and their possible arguments
 
 # **Requirements/Dependencies:**
--colorlog
--numpy
--pandas
--setuptools==69.5.1
--SQLAlchemy==2.0.31
--tqdm==4.66.2
--python-dotenv
--requests
--openpyxl==3.1.5
--pyodbc
--pytest
+- colorlog
+- numpy
+- pandas
+- setuptools==69.5.1
+- SQLAlchemy==2.0.31
+- tqdm==4.66.2
+- python-dotenv
+- requests
+- openpyxl==3.1.5
+- pyodbc
+- pytest
 
 # **Contributing:**
 
