@@ -29,7 +29,7 @@ def parse_arguments():
         "--start_date",
         type=api_utils.valid_date,
         default = os.getenv("collecting_start_date"),
-        help="...",
+        help="Start date for data processing in the format DDMMYY",
     )
     parser.add_argument(
         "--end_date",

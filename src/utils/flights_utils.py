@@ -51,7 +51,7 @@ def split_campaigns(df_flights, df_spots):
         sub_campaigns = split_campaign(campaign)
         new_campaigns = pd.concat([new_campaigns, sub_campaigns], ignore_index=True)
 
-    # recalculate grps for splitted campaigns
+    # re-calculate grps for splitted campaigns
     new_campaigns['start_date'] = pd.to_datetime(new_campaigns['start_date'])
     new_campaigns['end_date'] = pd.to_datetime(new_campaigns['end_date'])
     df_spots['date'] = pd.to_datetime(df_spots['date'])
@@ -106,7 +106,6 @@ def split_campaign(campaign):
 
 def sum_grps_for_splitted_campaigns(df_new_campaigns, df_spots):
     # Initialize GRP columns with 0
-    # grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
     grp_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'regio_grp','ster_grp']
     for col in grp_cols:
         df_new_campaigns[col] = 0.0
@@ -173,7 +172,7 @@ def generate_uuid_from_columns(row, data_type):
         print("Invalid UUID format:", hashed_value)
         return None
 
-def  kansspel_alcohol(df_flights):
+def kansspel_alcohol(df_flights):
     df_spots = pd.read_excel("././data/interim/all_spots_ster.xlsx")
     df_spots['date'] = pd.to_datetime(df_spots['date']).dt.date
 
@@ -203,7 +202,22 @@ def  kansspel_alcohol(df_flights):
 
 ############ MOCK FLIGHTS ################
 
-def create_mock_campaigns(df_flights, min_days_gap=4, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.8, max_mock_campaigns=10, max_attempts=50, min_mock_duration=1):
+def create_mock_campaigns(df_flights, min_days_gap=4, max_mock_duration_ratio=0.9, max_allowed_overlap = 0.8, max_mock_campaigns=10, max_attempts=50, min_mock_duration=5):
+    """
+    Generates mock campaigns based on the provided flights data.
+
+    Parameters:
+    df_flights (pd.DataFrame): The DataFrame containing the flights data.
+    min_days_gap (int, optional): The minimum gap in days between the start date of the mock campaign and the start date of the original campaign. Defaults to 4.
+    max_mock_duration_ratio (float, optional): The maximum ratio of the mock campaign duration to the original campaign duration. Defaults to 0.9.
+    max_allowed_overlap (float, optional): The maximum allowed overlap between the mock campaign and other mock campaigns. Defaults to 0.8.
+    max_mock_campaigns (int, optional): The maximum number of mock campaigns to generate. Defaults to 10.
+    max_attempts (int, optional): The maximum number of attempts to generate a mock campaign. Defaults to 50.
+    min_mock_duration (int, optional): The minimum duration of the mock campaign. Defaults to 1.
+
+    Returns:
+    pd.DataFrame: A DataFrame containing the generated mock campaigns.
+    """
     new_mock_campaigns = []
     df_flights['start_date'] = pd.to_datetime(df_flights['start_date'], format='%d%m%y')
     df_flights['end_date'] = pd.to_datetime(df_flights['end_date'], format='%d%m%y')
@@ -285,9 +299,6 @@ def calculate_grps_for_mock_campaigns(df_mocks, df_spots):
         'npo3_grp': 'sum',
         'regio_grp': 'sum',
         'ster_grp': 'sum',
-        # 'adalliance_grp': 'sum',
-        # 'talpa_grp': 'sum',
-        # 'total_grp': 'sum'
     }).reset_index()
     final_campaigns_df = pd.merge(df_mocks, aggregated_df, on='flight_id', how='left')
     final_campaigns_df = final_campaigns_df.dropna(subset=['ster_grp'])

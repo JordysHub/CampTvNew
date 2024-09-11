@@ -47,16 +47,27 @@ def test_flights_in_bereik_do_exist_in_flights_table():
     # Assert that the DataFrame is empty
     assert count_not_in_flights == 0, f"Found {count_not_in_flights} flights that do not exist in the flights table"
 
-def test_all_flights_exist_in_bereik():
+def test_all_normal_flights_exist_in_bereik():
     sql_query = """
     SELECT f.flight_id
     FROM [dbo].[tv.flights_ster] f
     LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
-    WHERE b.flight_id IS NULL;
+    WHERE b.flight_id IS NULL and f.mock_campaign = 0;
     """
     result_df = db_utils.query_to_df(sql_query)
     # Assert that the DataFrame is empty
-    assert result_df.empty, f"Found flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+    assert result_df.empty, f"Found normal flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+
+def test_all_mock_flights_exist_in_bereik():
+    sql_query = """
+    SELECT f.flight_id
+    FROM [dbo].[tv.flights_ster] f
+    LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
+    WHERE b.flight_id IS NULL and f.mock_campaign = 1;
+    """
+    result_df = db_utils.query_to_df(sql_query)
+    # Assert that the DataFrame is empty
+    assert result_df.empty, f"Found mock flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
 
 def test_all_flights_exist_in_bereik_per_target_group():
     sql_query = """
