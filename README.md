@@ -1,7 +1,8 @@
-# **sProject Description**
+# **Project Description**
+The project aims to forecast the 1+ reach for Ster campaigns with a ML model by leveraging key features such as GRPs, time-based factors, and (sporting) events. It automates the entire process, gathering all the necessary data to train the machine learning model used for these predictions.
 
 # **Project Overview**
-
+```
 .
 └── CAMP_TV_NEW/
     ├── data/
@@ -9,21 +10,21 @@
     │       ├── all_spots_ster.xlsx      # contains all spots per hour, which makes calculation alcohol/kansspel easier
     │       └── warnings.xlsx            # Some flights mismatch in Edge, causing the API to return an error. I store and remove these flights to prevent issues in the future.
     ├── notebooks/
-    │   ├── predictions                   # stores prediction files
+    │   ├── predictions                  # stores prediction files
     │   ├── visualizations/
     │   │   └── visualize.ipynb
     │   ├── clustering.ipynb
     │   ├── data_overview.ipynb           # gives and overview of what data is stored in the database per target group
-    │   └── model_trainer_class.ipynb  # The notebook used for training the models
+    │   └── model_trainer_class.ipynb     # The notebook used for training the models
     ├── src/
     │   ├── scripts/
     │   │   ├── calculate_pop.py           # Caluclates and updates the target group population in the database
-    │   │   ├── collect_bereik_ster.py    # Collects reach per target group from edge for every created (mock)flight
-    │   │   ├── collect_spots.py            # Collects all the (ster)spots per day
-    │   │   └── create_flights.py           # Create (mock)flights from the collected spots
+    │   │   ├── collect_bereik_ster.py     # Collects reach per target group from edge for every created (mock)flight
+    │   │   ├── collect_spots.py           # Collects all the (ster)spots per day
+    │   │   └── create_flights.py          # Create (mock)flights from the collected spots
     │   ├── tests/
-    │   │   └── test_flights.py               # Pytests for data in database
-    │   └── utils                                   # all the utility functions used in the main scripts/
+    │   │   └── test_flights.py            # Pytests for data in database
+    │   └── utils                          # all the utility functions used in the main scripts/
     │       ├── api_utils.py
     │       ├── bereik_utils.py
     │       ├── connection_utils.py
@@ -43,12 +44,30 @@
     ├── pipeline.py                # Runs the whole pipeline (all the scripts + the pytests). Can run this every other week to collect new spots/flights etc.
     ├── README.md
     └── requirements.txt
-
+```
 # **Installation Instructions**:
+- git pull request from `https://dev.azure.com/ster-nl/DataScience/_git/CampTvNew`
+- create virtual environment with `py -3.11 -m venv .venv` or within VScode
+- activate virtual environment with `.venv\Scripts\activate.ps1`
+- install requirements with `pip install -r requirements.txt`
 
 # **Usage**:
+- set terminal path in main folder and run pipeline with `pyton pipeline.py` or any script (for example `python src/scripts/collect_spots.py`)
+
+See wiki for running all the scripts and their possible arguments
 
 # **Requirements/Dependencies:**
+- colorlog
+- numpy
+- pandas
+- setuptools==69.5.1
+- SQLAlchemy==2.0.31
+- tqdm==4.66.2
+- python-dotenv
+- requests
+- openpyxl==3.1.5
+- pyodbc
+- pytest
 
 # **Contributing:**
 
