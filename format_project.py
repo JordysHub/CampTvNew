@@ -14,8 +14,8 @@ def format_python_scripts(directory):
             if file.endswith(tuple(python_file_extensions)):
                 file_path = os.path.join(root, file)
                 # Run black formatter on the Python script
-                subprocess.run(["autopep8", file_path], check=False)
-                
+                subprocess.run(["black", file_path], check=False)
+
 def lint_python_scripts(directory):
     for root, _, files in os.walk(directory):
         for file in files:

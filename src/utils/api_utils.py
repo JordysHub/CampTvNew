@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = setup_logger()
 
+
 def get_api_token() -> str:
     req = requests.post(
         "https://auth.grouptechedge.com/connect/token",
@@ -23,6 +24,7 @@ def get_api_token() -> str:
 
     return token
 
+
 def valid_date(s):
     try:
         parsed_date = datetime.strptime(s, "%d%m%y")
@@ -32,11 +34,12 @@ def valid_date(s):
         logger.debug(msg)  # Log error message as a debug message
         raise argparse.ArgumentTypeError(msg)
 
+
 def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
 
     dict_call = {
         "target": target_group,
-        "report": 'JordyPop',
+        "report": "JordyPop",
         "period": "-1d",
     }
 
@@ -46,7 +49,7 @@ def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
-        json=dict_call
+        json=dict_call,
     )
 
     data = json.loads(res.text)[1]["Pivot"]["items"]
@@ -54,7 +57,15 @@ def call_pop_report_tv(target_group: str, token: str) -> pd.DataFrame:
 
     return df
 
-def call_bereik_report_tv(target_groups: str, start_date: str, end_date: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
+
+def call_bereik_report_tv(
+    target_groups: str,
+    start_date: str,
+    end_date: str,
+    token: str,
+    advertiser=None,
+    product=None,
+) -> pd.DataFrame:
     """
     Call the camp bereik getter report API, retrieve the data for the specified target group, advertiser, product, start date, and end date, and return the result as a DataFrame.
     Advertiser and product aren't strictly nesssary, so the report can be called without these.
@@ -81,7 +92,7 @@ def call_bereik_report_tv(target_groups: str, start_date: str, end_date: str, to
 
     dict_call = {
         "target": target_groups,
-        "report": 'JordyCampBereik',
+        "report": "JordyCampBereik",
         "period": f"{start_date}-{end_date}",
         "filtertext": filter_text,
     }
@@ -92,7 +103,7 @@ def call_bereik_report_tv(target_groups: str, start_date: str, end_date: str, to
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         },
-        json=dict_call
+        json=dict_call,
     )
 
     data = json.loads(res.text)[1]["Pivot"]["items"]
@@ -103,7 +114,10 @@ def call_bereik_report_tv(target_groups: str, start_date: str, end_date: str, to
 
     return df
 
-def call_kdh_getter_report(day: str, token: str, advertiser=None, product=None) -> pd.DataFrame:
+
+def call_kdh_getter_report(
+    day: str, token: str, advertiser=None, product=None
+) -> pd.DataFrame:
     """
     Call the kdh (kijkdichtheid) getter report for tv. The call is made per day for all spots in this script.
     """
@@ -135,7 +149,9 @@ def call_kdh_getter_report(day: str, token: str, advertiser=None, product=None) 
     try:
         data = json.loads(res.text)[1]["Pivot"]["items"]
         df = pd.DataFrame(data)
-        assert not df.empty, logger.debug(f"DataFrame from API is empty for given day, {day}.")
+        assert not df.empty, logger.debug(
+            f"DataFrame from API is empty for given day, {day}."
+        )
 
     except (KeyError, IndexError, ValueError) as e:
         logger.error(e)
@@ -143,7 +159,10 @@ def call_kdh_getter_report(day: str, token: str, advertiser=None, product=None) 
 
     return df
 
-def retry_with_exponential_backoff(func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs):
+
+def retry_with_exponential_backoff(
+    func, *args, retries=5, initial_wait=1, max_wait=60, **kwargs
+):
     """
     Retry a function with exponential backoff.
 

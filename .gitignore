@@ -92,3 +92,4 @@ data/backup/
 logs/
 .pytest_cache
 .venv
+test.ipynb

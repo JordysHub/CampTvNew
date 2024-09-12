@@ -3,18 +3,20 @@ import src.utils.database_utils as db_utils
 import pytest
 import pandas as pd
 
+
 @pytest.fixture(scope="module", autouse=True)
 def preprocess():
     # some flights have a mismatch in Edge. These flights are logged in warnings.xlsx and can be deleted from the db, before running the tests
-    warnings_df = pd.read_excel('data/interim/warnings.xlsx')
-    wrong_flights = warnings_df['flight_id'].to_list()
-    flights = ', '.join(f"'{flight}'" for flight in wrong_flights)
-    db_utils.delete_flights(wrong_flights, 'tv.flights_ster')
-    db_utils.delete_flights(wrong_flights, 'tv.bereik_ster')
+    warnings_df = pd.read_excel("data/interim/warnings.xlsx")
+    wrong_flights = warnings_df["flight_id"].to_list()
+    flights = ", ".join(f"'{flight}'" for flight in wrong_flights)
+    db_utils.delete_flights(wrong_flights, "tv.flights_ster")
+    db_utils.delete_flights(wrong_flights, "tv.bereik_ster")
     print(f"{len(flights)} deleted...")
 
+
 def test_no_flights_with_count_greater_than_3():
-    #There can't be more than 3 of the same flight per target_group (3 dayparts) in the bereik table
+    # There can't be more than 3 of the same flight per target_group (3 dayparts) in the bereik table
     sql_query = """
     SELECT target_group, flight_id
     FROM [dbo].[tv.bereik_ster]
@@ -23,7 +25,10 @@ def test_no_flights_with_count_greater_than_3():
     """
     result_df = db_utils.query_to_df(sql_query)
     # Assert that the DataFrame is empty
-    assert result_df.empty, "Expected no flights with count greater than 3, but found some."
+    assert (
+        result_df.empty
+    ), "Expected no flights with count greater than 3, but found some."
+
 
 def test_no_flights_with_count_greater_than_1():
     # There can't be more than 1 same flight_id in the flights table
@@ -35,17 +40,23 @@ def test_no_flights_with_count_greater_than_1():
     """
     result_df = db_utils.query_to_df(sql_query)
     # Assert that the DataFrame is empty
-    assert result_df.empty, "Expected no flights with count greater than 1, but found some."
+    assert (
+        result_df.empty
+    ), "Expected no flights with count greater than 1, but found some."
+
 
 def test_flights_in_bereik_do_exist_in_flights_table():
-    sql_query = '''
+    sql_query = """
     SELECT COUNT(*) AS count_flight_ids_not_in_flights_table
     FROM [dbo].[tv.bereik_ster]
-    WHERE flight_id NOT IN (SELECT flight_id FROM [dbo].[tv.flights_ster])'''
+    WHERE flight_id NOT IN (SELECT flight_id FROM [dbo].[tv.flights_ster])"""
     result_df = db_utils.query_to_df(sql_query)
-    count_not_in_flights = result_df.iloc[0]['count_flight_ids_not_in_flights_table']
+    count_not_in_flights = result_df.iloc[0]["count_flight_ids_not_in_flights_table"]
     # Assert that the DataFrame is empty
-    assert count_not_in_flights == 0, f"Found {count_not_in_flights} flights that do not exist in the flights table"
+    assert (
+        count_not_in_flights == 0
+    ), f"Found {count_not_in_flights} flights that do not exist in the flights table"
+
 
 def test_all_normal_flights_exist_in_bereik():
     sql_query = """
@@ -56,7 +67,10 @@ def test_all_normal_flights_exist_in_bereik():
     """
     result_df = db_utils.query_to_df(sql_query)
     # Assert that the DataFrame is empty
-    assert result_df.empty, f"Found normal flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+    assert (
+        result_df.empty
+    ), f"Found normal flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+
 
 def test_all_mock_flights_exist_in_bereik():
     sql_query = """
@@ -67,7 +81,10 @@ def test_all_mock_flights_exist_in_bereik():
     """
     result_df = db_utils.query_to_df(sql_query)
     # Assert that the DataFrame is empty
-    assert result_df.empty, f"Found mock flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+    assert (
+        result_df.empty
+    ), f"Found mock flights that do not exist in bereik table: {result_df['flight_id'].tolist()}"
+
 
 def test_all_flights_exist_in_bereik_per_target_group():
     sql_query = """
@@ -87,7 +104,9 @@ def test_all_flights_exist_in_bereik_per_target_group():
     """
     result_df = db_utils.query_to_df(sql_query)
     # Assert that the DataFrame is empty
-    assert result_df.empty, f"Found flights that do not exist in bereik table for some target groups:\n{result_df.to_string(index=False)}"
+    assert (
+        result_df.empty
+    ), f"Found flights that do not exist in bereik table for some target groups:\n{result_df.to_string(index=False)}"
 
 
 # SELECT * FROM [dbo].[tv.bereik_ster]

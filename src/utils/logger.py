@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 import pandas as pd
 
+
 def setup_logger(base_log_path="src/scripts/logs/", console_logging=True):
     # Ensure the log directory exists
     if not os.path.exists(base_log_path):
@@ -35,7 +36,9 @@ def setup_logger(base_log_path="src/scripts/logs/", console_logging=True):
     # File handler for logging INFO level and higher
     file_handler = logging.FileHandler(log_file_path)
     file_handler.setLevel(logging.INFO)
-    file_formatter = FileFormatter(fmt='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%m-%Y %H:%M:%S')
+    file_formatter = FileFormatter(
+        fmt="%(asctime)s - %(levelname)s - %(message)s", datefmt="%d-%m-%Y %H:%M:%S"
+    )
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
@@ -49,34 +52,35 @@ def setup_logger(base_log_path="src/scripts/logs/", console_logging=True):
 
     return logger
 
+
 # Define custom formatter for terminal output
 class TerminalFormatter(logging.Formatter):
     FORMATS = {
-        logging.DEBUG: '%(asctime)s - %(levelname)s - %(message)s',
-        logging.INFO: '\033[92m%(asctime)s - %(levelname)s - %(message)s\033[0m',
-        logging.WARNING: '\033[93m%(asctime)s - %(levelname)s - %(message)s\033[0m',
-        logging.ERROR: '\033[91m%(asctime)s - %(levelname)s - %(message)s\033[0m',
-        logging.CRITICAL: '\033[91m%(asctime)s - %(levelname)s - %(message)s\033[0m'
+        logging.DEBUG: "%(asctime)s - %(levelname)s - %(message)s",
+        logging.INFO: "\033[92m%(asctime)s - %(levelname)s - %(message)s\033[0m",
+        logging.WARNING: "\033[93m%(asctime)s - %(levelname)s - %(message)s\033[0m",
+        logging.ERROR: "\033[91m%(asctime)s - %(levelname)s - %(message)s\033[0m",
+        logging.CRITICAL: "\033[91m%(asctime)s - %(levelname)s - %(message)s\033[0m",
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt, datefmt='%H:%M:%S')
+        formatter = logging.Formatter(log_fmt, datefmt="%H:%M:%S")
         return formatter.format(record)
 
 
 class FileFormatter(logging.Formatter):
     FORMATS = {
-        logging.DEBUG: '[DEBUG] [%(name)s] - %(asctime)s - %(message)s',
-        logging.INFO: '[INFO] [%(name)s] - %(asctime)s - %(message)s',
-        logging.WARNING: '[WARNING] %(asctime)s - %(message)s',
-        logging.ERROR: '[ERROR] %(asctime)s - %(message)s',
-        logging.CRITICAL: '[CRITICAL] %(asctime)s - %(message)s'
+        logging.DEBUG: "[DEBUG] [%(name)s] - %(asctime)s - %(message)s",
+        logging.INFO: "[INFO] [%(name)s] - %(asctime)s - %(message)s",
+        logging.WARNING: "[WARNING] %(asctime)s - %(message)s",
+        logging.ERROR: "[ERROR] %(asctime)s - %(message)s",
+        logging.CRITICAL: "[CRITICAL] %(asctime)s - %(message)s",
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt, datefmt='%H:%M:%S')
+        formatter = logging.Formatter(log_fmt, datefmt="%H:%M:%S")
         return formatter.format(record)
 
 
@@ -93,14 +97,22 @@ def timer_func(func):
 
     return wrap_func
 
-def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, file_path='data/interim/warnings.xlsx'):
+
+def log_warning_to_excel(
+    flight_id,
+    advertiser,
+    product,
+    start_date,
+    end_date,
+    file_path="data/interim/warnings.xlsx",
+):
     # Create a dictionary for the new row
     new_row = {
-        'flight_id': flight_id,
-        'advertiser': advertiser,
-        'product': product,
-        'start_date': start_date,
-        'end_date': end_date
+        "flight_id": flight_id,
+        "advertiser": advertiser,
+        "product": product,
+        "start_date": start_date,
+        "end_date": end_date,
     }
 
     new_df = pd.DataFrame([new_row])
@@ -111,7 +123,7 @@ def log_warning_to_excel(flight_id, advertiser, product, start_date, end_date, f
         df_existing = pd.read_excel(file_path)
 
         # Check if the flight_id already exists
-        if not df_existing[df_existing['flight_id'] == flight_id].empty:
+        if not df_existing[df_existing["flight_id"] == flight_id].empty:
             return
 
         # Append new row to the existing dataframe

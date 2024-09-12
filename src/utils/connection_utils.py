@@ -1,12 +1,13 @@
 from dotenv import load_dotenv
 import os
-import pandas as pd
 
 load_dotenv()
+
 
 def create_sql_alchemy_engine():
     from sqlalchemy import create_engine
     from urllib.parse import quote_plus
+
     """
     Creates and returns a SQLAlchemy engine for connecting to a SQL Server database.
     """

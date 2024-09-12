@@ -1,7 +1,7 @@
 class Queries:
     @staticmethod
     def get_missing_flights_per_target_group(target_groups):
-        target_groups_str = ', '.join(f"'{tg}'" for tg in target_groups)
+        target_groups_str = ", ".join(f"'{tg}'" for tg in target_groups)
         return f"""
         WITH AllCombinations AS (
             SELECT
@@ -51,7 +51,7 @@ class Queries:
 
     @staticmethod
     def delete_overlapping_flights():
-    # When fetching older data, these newly calculated campaigns can overlap with the already existing campaigns.
+        # When fetching older data, these newly calculated campaigns can overlap with the already existing campaigns.
         return """
         WITH overlapping_campaigns AS (
         SELECT
@@ -76,7 +76,7 @@ class Queries:
 
     @staticmethod
     def delete_bereik_flights_which_dont_match():
-    #
+        #
         return """
         SELECT DISTINCT
             t1.flight_id
@@ -92,82 +92,65 @@ class Queries:
 
     @staticmethod
     def get_existing_dates_from_spots():
-    #
+        #
         return """
         SELECT DISTINCT [date]
         FROM [dbo].[tv.spots_ster]
         """
 
 
-
-query_dict = {
-    'get_flights_ster': '''
-        SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights_ster]''',
-    'get_flights': '''
-        SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights]''',
-
-    'get_existing_campaign_data_ster': '''
-        SELECT DISTINCT flight_id, target_group FROM [dbo].[tv.bereik_ster];
-    ''',
-
-    'get_existing_campaign_data': '''
-        SELECT DISTINCT flight_id, target_group FROM [dbo].[tv.bereik];
-    ''',
-
-
-    'get_missing_flights_all': '''
-        SELECT f.flight_id
-        FROM [dbo].[tv.flights_ster] f
-        LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
-        WHERE b.flight_id IS NULL
-    ''',
-
-    'collect_mock_flights': '''
-    SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp
-    FROM [dbo].[tv.flights]
-    WHERE mock_campaign = 1
-    ''',
-
-    'get_existing_campaign_data': '''
-    SELECT DISTINCT flight_id, target_group
-    FROM [dbo].[tv.bereik_ster];
-    ''',
-
-    'get_existing_dates_from_spots': '''
-    SELECT DISTINCT [date]
-    FROM [dbo].[tv.spots_ster]
-    ''',
-
-    'get_bereik':
-        '''SELECT flight_id, target_group, campaign_duration, daypart FROM [dbo].[tv.bereik_ster] WHERE target_group = :target_group''',
-    'get_bereik_model':'''
-        SELECT b.flight_id, f.start_date, f.end_date, b.target_group, b.campaign_duration, b.daypart, b.total_grp, b.ster_grp, b.regio_grp, b.npo1_grp, b.npo2_grp, b.npo3_grp, b.[ster_1+]
-        FROM [dbo].[tv.bereik_ster] b
-        LEFT JOIN [dbo].[tv.flights_ster] f ON b.flight_id = f.flight_id
-        where b.ster_grp > 0 and target_group = :target_group and start_date >= :start_date and end_date <= :end_date
-        ''',
-
-    'delete_double_entries': '''
-        WITH CTE AS (
-        SELECT
-            flight_id,
-            target_group,
-            campaign_duration,
-            daypart,
-            total_grp,
-            ROW_NUMBER() OVER (PARTITION BY flight_id, target_group, campaign_duration, daypart, total_grp ORDER BY (SELECT NULL)) AS row_num
-        FROM [dbo].[tv.bereik_ster]
-        )
-        DELETE FROM CTE
-        WHERE row_num > 1;
-    '''
-}
-
-
-
-
-
-
+# query_dict = {
+#     "get_flights_ster": """
+#         SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights_ster]""",
+#     "get_flights": """
+#         SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp FROM [dbo].[tv.flights]""",
+#     "get_existing_campaign_data_ster": """
+#         SELECT DISTINCT flight_id, target_group FROM [dbo].[tv.bereik_ster];
+#     """,
+#     "get_existing_campaign_data": """
+#         SELECT DISTINCT flight_id, target_group FROM [dbo].[tv.bereik];
+#     """,
+#     "get_missing_flights_all": """
+#         SELECT f.flight_id
+#         FROM [dbo].[tv.flights_ster] f
+#         LEFT JOIN [dbo].[tv.bereik_ster] b ON f.flight_id = b.flight_id
+#         WHERE b.flight_id IS NULL
+#     """,
+#     "collect_mock_flights": """
+#     SELECT flight_id, advertiser, product, start_date, end_date, campaign_duration, mock_campaign, ster_grp
+#     FROM [dbo].[tv.flights]
+#     WHERE mock_campaign = 1
+#     """,
+#     "get_existing_campaign_data": """
+#     SELECT DISTINCT flight_id, target_group
+#     FROM [dbo].[tv.bereik_ster];
+#     """,
+#     "get_existing_dates_from_spots": """
+#     SELECT DISTINCT [date]
+#     FROM [dbo].[tv.spots_ster]
+#     """,
+#     "get_bereik": """SELECT flight_id, target_group, campaign_duration, daypart FROM [dbo].[tv.bereik_ster] WHERE target_group = :target_group""",
+#     "get_bereik_model": """
+#         SELECT b.flight_id, f.start_date, f.end_date, b.target_group, b.campaign_duration, b.daypart, b.total_grp, b.ster_grp, b.regio_grp, b.npo1_grp, b.npo2_grp, b.npo3_grp, b.[ster_1+]
+#         FROM [dbo].[tv.bereik_ster] b
+#         LEFT JOIN [dbo].[tv.flights_ster] f ON b.flight_id = f.flight_id
+#         where b.ster_grp > 0 and target_group = :target_group and start_date >= :start_date and end_date <= :end_date
+#         """,
+#     "delete_double_entries": """
+#         WITH CTE AS (
+#         SELECT
+#             flight_id,
+#             target_group,
+#             campaign_duration,
+#             daypart,
+#             total_grp,
+#             ROW_NUMBER() OVER (PARTITION BY flight_id, target_group, campaign_duration, daypart, total_grp ORDER BY (SELECT NULL)) AS row_num
+#         FROM [dbo].[tv.bereik_ster]
+#         )
+#         DELETE FROM CTE
+#         WHERE row_num > 1;
+#     """,
+# }
 
 
 """

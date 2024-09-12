@@ -7,11 +7,12 @@ from sqlalchemy import text
 
 logger = setup_logger()
 
+@timer_func
 def dump_to_sql(
     df,
     table_name,
-    schema = 'dbo',
-    if_exists = 'append',
+    schema="dbo",
+    if_exists="append",
     index=False,
     method="multi",
     chunksize=10,
@@ -51,20 +52,28 @@ def dump_to_sql(
         )
 
     except Exception as e:
-        logger.error(f"An error occurred while dumping the data to the database: {str(e)}")
+        logger.error(
+            f"An error occurred while dumping the data to the database: {str(e)}"
+        )
 
-def check_existing_primary_keys(df: pd.DataFrame, table_name: str,  column_name: str, schema: str = 'dbo') -> pd.DataFrame:
-        # Create a SQLAlchemy engine
-        engine = con_utils.create_sql_alchemy_engine()
 
-        # Load existing primary keys from the database
-        existing_keys_query = f"SELECT DISTINCT {column_name} FROM [{schema}].[{table_name}];"
-        existing_keys = pd.read_sql(existing_keys_query, engine)[column_name].tolist()
+def check_existing_primary_keys(
+    df: pd.DataFrame, table_name: str, column_name: str, schema: str = "dbo"
+) -> pd.DataFrame:
+    # Create a SQLAlchemy engine
+    engine = con_utils.create_sql_alchemy_engine()
 
-        # Filter out rows with existing primary keys
-        df_to_insert = df[~df[column_name].isin(existing_keys)]
+    # Load existing primary keys from the database
+    existing_keys_query = (
+        f"SELECT DISTINCT {column_name} FROM [{schema}].[{table_name}];"
+    )
+    existing_keys = pd.read_sql(existing_keys_query, engine)[column_name].tolist()
 
-        return df_to_insert
+    # Filter out rows with existing primary keys
+    df_to_insert = df[~df[column_name].isin(existing_keys)]
+
+    return df_to_insert
+
 
 def query_to_df(query):
     engine = con_utils.create_sql_alchemy_engine()
@@ -73,7 +82,8 @@ def query_to_df(query):
 
     return df_query
 
-def delete_flights(list_of_flights, table_name, target_groups = None):
+
+def delete_flights(list_of_flights, table_name, target_groups=None):
     try:
         # Connect to the database
         engine = con_utils.create_sql_alchemy_engine()
@@ -82,7 +92,7 @@ def delete_flights(list_of_flights, table_name, target_groups = None):
 
         # Convert target_groups to a format suitable for SQL IN clause
         if target_groups:
-            target_groups_str = ', '.join(f"'{tg}'" for tg in target_groups)
+            target_groups_str = ", ".join(f"'{tg}'" for tg in target_groups)
             target_groups_condition = f"AND target_group IN ({target_groups_str})"
         else:
             target_groups_condition = ""
