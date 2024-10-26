@@ -49,7 +49,8 @@ def test_flights_in_bereik_do_exist_in_flights_table():
     sql_query = """
     SELECT COUNT(*) AS count_flight_ids_not_in_flights_table
     FROM [dbo].[tv.bereik_ster]
-    WHERE flight_id NOT IN (SELECT flight_id FROM [dbo].[tv.flights_ster])"""
+    WHERE flight_id NOT IN (SELECT flight_id FROM [dbo].[tv.flights_ster])
+    """
     result_df = db_utils.query_to_df(sql_query)
     count_not_in_flights = result_df.iloc[0]["count_flight_ids_not_in_flights_table"]
     # Assert that the DataFrame is empty
@@ -107,10 +108,3 @@ def test_all_flights_exist_in_bereik_per_target_group():
     assert (
         result_df.empty
     ), f"Found flights that do not exist in bereik table for some target groups:\n{result_df.to_string(index=False)}"
-
-
-# SELECT * FROM [dbo].[tv.bereik_ster]
-# WHERE flight_id not IN (
-# SELECT flight_id
-# FROM [dbo].[tv.flights_ster]
-# );

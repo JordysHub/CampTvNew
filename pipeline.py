@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO,
 
 logger = logging.getLogger(__name__)
 
+
 @timer_func
 def run_script(script_name):
     """
@@ -34,7 +35,9 @@ def run_script(script_name):
 
     return result
 
+
 def main():
+    logger.info("Starting pipeline run")
     try:
         run_script("src/scripts/collect_spots.py")
         run_script("src/scripts/create_flights.py")
@@ -46,6 +49,7 @@ def main():
 
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,11 +1,12 @@
 from src.utils.logger import setup_logger
 
+from datetime import datetime
 import numpy as np
 import pandas as pd
 import ast
+import logging
 
-logger = setup_logger()
-
+logger = logging.getLogger("process_utils.py")
 
 def determine_ids(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -50,7 +51,6 @@ def add_dayparts(df: pd.DataFrame) -> pd.DataFrame:
 
     # Perform the groupby and sum operation
     group_cols = ["date", "advertiser", "product", "daypart", "hour"]
-    # sum_cols = ['npo1_grp', 'npo2_grp', 'npo3_grp', 'ster_grp', 'regio_grp', 'adalliance_grp', 'talpa_grp', 'total_grp']
     sum_cols = [
         "npo1_grp",
         "npo2_grp",
@@ -124,6 +124,8 @@ def clean_hour_column(df):
 
 
 def count_spots_and_grp(df):
+    # Add a condition to check if all spots are between 20:00 and 05:00 AM (oorspronkelijk 21-2, maar in Edge heeft bijv Heineken veel spotjes om 20 en om 04 uur)
+    df['is_late_night'] = df['hour'].apply(lambda x: 20 <= x or x <= 5)
 
     grouped_df = (
         df.groupby(["advertiser", "product", "date"])
@@ -134,9 +136,7 @@ def count_spots_and_grp(df):
             npo3_grp=("npo3_grp", "sum"),
             regio_grp=("regio_grp", "sum"),
             ster_grp=("ster_grp", "sum"),
-            # adalliance_grp=('adalliance_grp', 'sum'),
-            # talpa_grp=('talpa_grp', 'sum'),
-            # total_grp=('total_grp', 'sum')
+            alcohol_kansspelen=("is_late_night", "all"),  # True if all spots are between 21:00 and 05:00
         )
         .reset_index()
     )

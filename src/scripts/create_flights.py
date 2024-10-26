@@ -10,10 +10,11 @@ from src.utils.logger import setup_logger, timer_func
 import src.utils.flights_utils as fu
 import src.utils.database_utils as db_utils
 from src.utils.query_dict import Queries
+from datetime import datetime
 
 import pandas as pd
 
-logger = setup_logger()
+logger = setup_logger(script_name="create_flights.py", console_logging=True)
 
 
 def preprocess_flights(df_spots: pd.DataFrame):
@@ -30,6 +31,7 @@ def preprocess_flights(df_spots: pd.DataFrame):
     It then merges the grouped DataFrame with the start and end dates of each campaign using a left join. Finally, it splits the campaigns into separate flights based on the spots DataFrame and returns the processed flights DataFrame.
     """
     segmented_df = fu.flights_segment_campaigns_by_new_start(df_spots)
+
     grp_sum = (
         segmented_df.groupby(["advertiser", "product", "flight_id"])[
             ["npo1_grp", "npo2_grp", "npo3_grp", "regio_grp", "ster_grp"]
@@ -37,11 +39,22 @@ def preprocess_flights(df_spots: pd.DataFrame):
         .sum()
         .reset_index()
     )
-    dates_df = fu.get_start_end_campaign_date(segmented_df)
-    df_flights = grp_sum.merge(
-        dates_df, how="left", on=["advertiser", "product", "flight_id"]
+
+    # Adding the alcohol_kansspelen column based on the group
+    alcohol_check = (
+        segmented_df.groupby(["advertiser", "product", "flight_id"])["alcohol_kansspelen"]
+        .all()
+        .reset_index()
     )
+
+    # Merge the alcohol_kansspelen check back into the grouped DataFrame
+    grp_sum = pd.merge(grp_sum, alcohol_check, on=["advertiser", "product", "flight_id"])
+
+    # Get the start and end dates for each campaign
+    dates_df = fu.get_start_end_campaign_date(segmented_df)
+    df_flights = grp_sum.merge(dates_df, how="left", on=["advertiser", "product", "flight_id"])
     df_flights = fu.split_campaigns(df_flights, df_spots)
+
     return df_flights
 
 
@@ -134,6 +147,10 @@ def create_mocks_from_flights(df_flights: pd.DataFrame, df_spots: pd.DataFrame):
         mock_campaigns_df, df_spots
     )
     mock_campaigns_df = finalize_flights(mock_campaigns_df, data_type="mock")
+
+    # Calculate Alcohol/Kanssspelen
+    mock_campaigns_df = fu.check_alcohol_kansspelen(mock_campaigns_df)
+
     return mock_campaigns_df
 
 
@@ -163,9 +180,6 @@ if __name__ == "__main__":
         # Log and process filtered flights
         logger.debug("Processing and updating filtered flights...")
         if not df_flights_filtered.empty:
-            logger.debug("Calculating alcohol/kansspelen...")
-            df_flights_filtered = fu.kansspel_alcohol(df_flights_filtered)
-
             # Delete old flights and dump new flights
             logger.debug("Dump flights in database...")
             db_utils.delete_flights(
@@ -174,6 +188,8 @@ if __name__ == "__main__":
             db_utils.dump_to_sql(
                 df_flights_filtered, table_name=table_name, if_exists="append"
             )
+        else:
+            logger.debug("No new flights to process..")
 
     except Exception as e:
         logger.error(f"Failed during flight processing: {e}")
@@ -191,17 +207,14 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Failed to delete flights from bereik table: {e}")
 
-    # if CREATE_MOCKS:
-    #     # Create mocks from flights
-    #     df_mocks = create_mocks_from_flights(df_flights, df_spots)
-    #     # Check existing primary keys
-    #     df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
-    #     # Calculate alcohol kansspelen
-    #     logger.debug("Calculate alcohol/kansspelen for mocks...")
-    #     df_mocks_to_insert = fu.kansspel_alcohol(df_mocks_to_insert)
+    if CREATE_MOCKS:
+        # Create mocks from flights
+        df_mocks = create_mocks_from_flights(df_flights, df_spots)
+        # Check existing primary keys
+        df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')
 
-    #     if df_mocks_to_insert.shape[0] == 0:
-    #         logger.info(f"No new rows to insert for {table_name}")
-    #     else:
-    #         logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
-    #         db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)
+        if df_mocks_to_insert.shape[0] == 0:
+            logger.info(f"No new rows to insert for {table_name}")
+        else:
+            logger.info(f"Number of rows to insert for {table_name}: {df_mocks_to_insert.shape[0]}")
+            db_utils.dump_to_sql(df_mocks_to_insert, table_name=table_name)

@@ -3,9 +3,9 @@ from src.utils.logger import setup_logger, timer_func
 
 import pandas as pd
 from sqlalchemy import text
+import logging
 
-
-logger = setup_logger()
+logger = logging.getLogger("database_utils.py")
 
 @timer_func
 def dump_to_sql(
@@ -50,6 +50,7 @@ def dump_to_sql(
             method=method,
             chunksize=chunksize,
         )
+        logger.info(f'{len(df)} rows dumped to {schema}.{table_name}')
 
     except Exception as e:
         logger.error(
@@ -60,6 +61,7 @@ def dump_to_sql(
 def check_existing_primary_keys(
     df: pd.DataFrame, table_name: str, column_name: str, schema: str = "dbo"
 ) -> pd.DataFrame:
+    logger.info(f"Checking existing primary keys in {schema}.{table_name}...")
     # Create a SQLAlchemy engine
     engine = con_utils.create_sql_alchemy_engine()
 
@@ -89,6 +91,7 @@ def delete_flights(list_of_flights, table_name, target_groups=None):
         engine = con_utils.create_sql_alchemy_engine()
         # Convert list_of_flights to a tuple for use in the SQL query
         list_of_flights = tuple(list_of_flights)
+        flights_placeholder = f"('{list_of_flights[0]}')" if len(list_of_flights) == 1 else list_of_flights
 
         # Convert target_groups to a format suitable for SQL IN clause
         if target_groups:

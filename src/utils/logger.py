@@ -5,55 +5,49 @@ import os
 import pandas as pd
 
 
-def setup_logger(base_log_path="src/scripts/logs/", console_logging=True):
-    # Ensure the log directory exists
-    if not os.path.exists(base_log_path):
-        os.makedirs(base_log_path)
+# Setup logger function
+def setup_logger(script_name, log_dir='logs', console_logging=False):
+    # Ensure the logs directory exists
+    os.makedirs(log_dir, exist_ok=True)
 
-    # Create logger instance
-    logger = logging.getLogger()
+    # Define the path for the script-specific log file
+    log_file_path = os.path.join(log_dir, f"{script_name}.log")
 
-    # Check if logger already has handlers
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    # Create a logger for the script
+    logger = logging.getLogger(script_name)
+    logger.setLevel(logging.DEBUG)  # Start with DEBUG level
 
-    # Configure the root logger
-    logger.setLevel(logging.DEBUG)
+    # Avoid duplicate handlers if the logger is called multiple times
+    if not logger.handlers:
+        # File handler for logging INFO level and above
+        file_handler = logging.FileHandler(log_file_path)
+        file_handler.setLevel(logging.INFO)
+        file_formatter = logging.Formatter(
+            fmt="%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%d-%m-%Y %H:%M:%S"
+        )
+        file_handler.setFormatter(file_formatter)
+        logger.addHandler(file_handler)
 
-    # Configure the logging level for the requests library
-    requests_logger = logging.getLogger("requests")
-    requests_logger.setLevel(logging.WARNING)
+        # Console handler for DEBUG level and above (optional)
+        if console_logging:
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.DEBUG)
+            console_formatter = logging.Formatter(
+                fmt="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                datefmt="%d-%m-%Y %H:%M:%S"
+            )
+            console_handler.setFormatter(console_formatter)
+            logger.addHandler(console_handler)
 
-    # Configure the logging level for urllib3, which is used by requests
-    urllib3_logger = logging.getLogger("urllib3")
-    urllib3_logger.setLevel(logging.WARNING)
-
-    # Create log file with date-based name
-    current_time = datetime.now()
-    log_file = f"{current_time.strftime('%d-%m')}_daily_log_.log"
-    log_file_path = os.path.join(base_log_path, log_file)
-
-    # File handler for logging INFO level and higher
-    file_handler = logging.FileHandler(log_file_path)
-    file_handler.setLevel(logging.INFO)
-    file_formatter = FileFormatter(
-        fmt="%(asctime)s - %(levelname)s - %(message)s", datefmt="%d-%m-%Y %H:%M:%S"
-    )
-    file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
-
-    # Console handler for logging DEBUG level and higher
-    if console_logging:
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG)
-        console_formatter = TerminalFormatter()
-        console_handler.setFormatter(console_formatter)
-        logger.addHandler(console_handler)
+        # Configure 'requests' and 'urllib3' loggers to avoid excessive logging
+        logging.getLogger("requests").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     return logger
 
-
 # Define custom formatter for terminal output
+
 class TerminalFormatter(logging.Formatter):
     FORMATS = {
         logging.DEBUG: "%(asctime)s - %(levelname)s - %(message)s",
@@ -86,7 +80,12 @@ class FileFormatter(logging.Formatter):
 
 def timer_func(func):
     # Decorator function to measure the execution time of the input function.
-    logger = setup_logger()
+    logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    filename='pipeline.log',
+                    filemode='w')
+
+    logger = logging.getLogger(__name__)
 
     def wrap_func(*args, **kwargs):
         t1 = time()

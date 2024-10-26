@@ -11,8 +11,7 @@ import src.utils.database_utils as db_utils
 import pandas as pd
 
 # setup logger
-logger = setup_logger()
-
+logger = setup_logger(script_name="calculate_pop.py", console_logging=True)
 
 def calculate_pop(df):
     df.iloc[:, 1:] = df.iloc[:, 1:].apply(

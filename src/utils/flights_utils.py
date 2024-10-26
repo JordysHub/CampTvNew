@@ -7,10 +7,13 @@ import hashlib
 import uuid
 from datetime import timedelta
 from tqdm import tqdm
+import logging
 
+import src.utils.database_utils as db_utils
+
+logger = logging.getLogger("flights_utils.py")
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
-    # preprocessing
     df = df[
         [
             "advertiser",
@@ -21,8 +24,10 @@ def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
             "npo3_grp",
             "regio_grp",
             "ster_grp",
+            "alcohol_kansspelen"
         ]
     ].drop_duplicates()
+
     df = df.sort_values(by=["advertiser", "product", "date"]).reset_index(drop=True)
     df["date"] = pd.to_datetime(df["date"])
 
@@ -44,6 +49,7 @@ def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     df["flight_id"] = np.where(
         df["new_start"], [str(uuid.uuid4()) for _ in range(len(df))], None
     )
+
     df["flight_id"] = df["flight_id"].ffill()  # future warning
 
     return df
@@ -54,7 +60,6 @@ def get_start_end_campaign_date(df: pd.DataFrame) -> pd.DataFrame:
     This function calculates the start_date and end_date for each flight.
     Output start_date and end_date in string DDMMYY format.
     """
-
     min_date_df = (
         df.groupby(["advertiser", "product", "flight_id"])["date"]
         .min()
@@ -83,7 +88,7 @@ def get_start_end_campaign_date(df: pd.DataFrame) -> pd.DataFrame:
             "product",
             "start_date",
             "end_date",
-            "campaign_duration",
+            "campaign_duration"
         ],
     ]
 
@@ -131,6 +136,7 @@ def split_campaign(campaign):
             "start_date": start_date,
             "end_date": this_end_date,
             "campaign_duration": this_campaign_duration,
+            "alcohol_kansspelen": campaign["alcohol_kansspelen"],
         }
         sub_campaigns.append(campaign_data)
 
@@ -146,6 +152,7 @@ def split_campaign(campaign):
         "start_date": start_date,
         "end_date": end_date,
         "campaign_duration": (end_date - start_date).days + 1,
+        "alcohol_kansspelen": campaign["alcohol_kansspelen"]
     }
     sub_campaigns.append(campaign_data)
 
@@ -240,40 +247,36 @@ def generate_uuid_from_columns(row, data_type):
         return None
 
 
-def kansspel_alcohol(df_flights):
-    df_spots = pd.read_excel("././data/interim/all_spots_ster.xlsx")
-    df_spots["date"] = pd.to_datetime(df_spots["date"]).dt.date
+def check_alcohol_kansspelen(df_flights):
+    query_spots = """
+        SELECT *
+        FROM [dbo].[tv.spots_ster]
+        order by date, advertiser;
+        """
+    all_spots = db_utils.query_to_df(query_spots)
 
-    results = []
-    for _, flight in tqdm(
-        df_flights.iterrows(),
-        total=len(df_flights),
-        position=0,
-        ncols=120,
-    ):
-        # Filter spots based on advertiser, product, and date range
-        flight_spots = df_spots[
-            (df_spots["advertiser"] == flight["advertiser"])
-            & (df_spots["product"] == flight["product"])
-            & (df_spots["date"] >= flight["start_date"])
-            & (df_spots["date"] <= flight["end_date"])
-        ]
+    # Initialize alcohol_kansspelen column to 0
+    df_flights['alcohol_kansspelen'] = 0
 
-        # Check if all hours are within the specified range (21 to 2)
-        within_hours = (
-            flight_spots["hour"].apply(lambda x: 21 <= x <= 23 or 0 <= x <= 2).all()
-        )
+    def update_alcohol_label(flights, spots):
+        for index, flight in flights.iterrows():
+            # Filter spots for the current flight's advertiser, product, and date range
+            flight_spots = spots[
+                (spots['advertiser'] == flight['advertiser']) &
+                (spots['product'] == flight['product']) &
+                (spots['date'] >= flight['start_date']) &
+                (spots['date'] <= flight['end_date'])
+            ]
 
-        results.append(
-            {"flight_id": flight["flight_id"], "alcohol_kansspelen": within_hours}
-        )
+            # Check if all rows for alcohol_kansspelen are True (1)
+            if len(flight_spots) > 0 and flight_spots['alcohol_kansspelen'].all():
+                flights.at[index, 'alcohol_kansspelen'] = 1  # Mark as True/1
+            else:
+                flights.at[index, 'alcohol_kansspelen'] = 0  # Mark as False/0
 
-    alcohol_kansspelen = pd.DataFrame(results)
-    # Merge the results with the flights DataFrame
-    flights_with_alcohol = df_flights.merge(alcohol_kansspelen, on="flight_id")
+    update_alcohol_label(df_flights, all_spots)
 
-    return flights_with_alcohol
-
+    return df_flights
 
 ############ MOCK FLIGHTS ################
 

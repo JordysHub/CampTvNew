@@ -1,5 +1,3 @@
-from src.utils.logger import setup_logger
-
 import requests
 from requests.auth import HTTPBasicAuth
 from datetime import datetime
@@ -9,10 +7,11 @@ import argparse
 import json
 import time
 from dotenv import load_dotenv
+import logging
+# import logging_config  # Ensure configuration is loaded
 
+logger = logging.getLogger("api_utils.py")
 load_dotenv()
-logger = setup_logger()
-
 
 def get_api_token() -> str:
     req = requests.post(

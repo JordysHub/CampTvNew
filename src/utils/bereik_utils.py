@@ -8,11 +8,7 @@ import numpy as np
 
 pd.set_option("display.max_columns", None)
 
-logger = setup_logger()
-
-# from line_profiler import LineProfiler
-# lp = LineProfiler()
-
+logger = logging.getLogger("bereik_utils.py")
 
 def get_bereik(index, row, token: str):
     """

@@ -18,7 +18,7 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 
 # Setup logger
-logger = setup_logger()
+logger = setup_logger(script_name="collect_spots.py", console_logging=True)
 
 
 def parse_arguments():
@@ -95,10 +95,6 @@ def get_spots(missing_dates: list) -> pd.DataFrame:
             df_spots = pd.concat([df_spots, df], ignore_index=True)
 
         df_spots = proc_spots.clean_hour_column(df_spots)
-
-        # Save DataFrame to Excel before further processing
-        save_to_excel(df_spots)
-
         df_spots = proc_spots.count_spots_and_grp(df_spots)
         df_spots["ID"] = df_spots.apply(
             fu.generate_uuid_from_columns, data_type="spots", axis=1
@@ -109,35 +105,6 @@ def get_spots(missing_dates: list) -> pd.DataFrame:
         logger.debug("All daily spots have already been collected")
 
     return df_spots
-
-
-def save_to_excel(df: pd.DataFrame):
-    """
-    Save the given DataFrame to an Excel file. It concatenates the given DataFrame with the existing one and drops any duplicate spots.
-    """
-    try:
-        df["date"] = pd.to_datetime(df["date"]).dt.date
-        df_all_spots = pd.read_excel(
-            "../data/interim/all_spots_ster.xlsx", engine="openpyxl"
-        )
-        df_all_spots = pd.concat([df_all_spots, df], ignore_index=True)
-        df.sort_values(
-            by=["advertiser", "product", "date", "hour"],
-            ignore_index=True,
-            inplace=True,
-        )
-        df.drop_duplicates(
-            subset=["advertiser", "product", "date", "hour"],
-            keep="last",
-            ignore_index=True,
-            inplace=True,
-        )
-        df.to_excel("././data/interim/all_spots_ster.xlsx", index=False)
-    except FileNotFoundError:
-        pass
-
-    except Exception as e:
-        logger.error(f"Failed to save to Excel: {e}")
 
 
 def fetch_spots_for_date(day_str: str, token: str) -> pd.DataFrame:
@@ -218,6 +185,7 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     missing_dates = get_missing_dates(args.start_date, args.end_date)
+
     df_spots = get_spots(missing_dates)
 
     if not df_spots.empty:

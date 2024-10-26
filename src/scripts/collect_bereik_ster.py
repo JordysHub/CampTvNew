@@ -17,7 +17,7 @@ from tqdm import tqdm
 import argparse
 
 # Setup logger
-logger = setup_logger()
+logger = setup_logger(script_name="collect_bereik_ster.py", console_logging=True)
 
 
 def parse_arguments():

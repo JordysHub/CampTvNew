@@ -1,13 +1,13 @@
 from dotenv import load_dotenv
 import os
+from sqlalchemy import create_engine
+from urllib.parse import quote_plus
+import logging
 
 load_dotenv()
-
+logger = logging.getLogger("connection_utils.py")
 
 def create_sql_alchemy_engine():
-    from sqlalchemy import create_engine
-    from urllib.parse import quote_plus
-
     """
     Creates and returns a SQLAlchemy engine for connecting to a SQL Server database.
     """
