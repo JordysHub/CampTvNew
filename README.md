@@ -38,7 +38,7 @@ The project aims to forecast the 1+ reach for Ster campaigns with a ML model by 
     │       └── test_api.py
     ├── .env
     ├── .gitignore
-    ├── format_project.py
+    ├── format_project.py               # linting and formatting project code
     ├── make.bat
     ├── pipeline.log
     ├── pipeline.py                # Runs the whole pipeline (all the scripts + the pytests). Can run this every other week to collect new spots/flights etc.
