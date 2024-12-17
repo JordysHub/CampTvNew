@@ -5,7 +5,7 @@ from urllib.parse import quote_plus
 import logging
 
 load_dotenv()
-logger = logging.getLogger("connection_utils.py")
+logger = logging.getLogger("MyLogger")
 
 def create_sql_alchemy_engine():
     """

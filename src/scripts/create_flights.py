@@ -13,8 +13,13 @@ from src.utils.query_dict import Queries
 from datetime import datetime
 
 import pandas as pd
+import logging
+from datetime import date
 
-logger = setup_logger(script_name="create_flights.py", console_logging=True)
+logger = setup_logger()
+
+# Suppress SettingWithCopyWarning
+pd.options.mode.chained_assignment = None
 
 
 def preprocess_flights(df_spots: pd.DataFrame):
@@ -106,20 +111,19 @@ def finalize_flights(df_flights: pd.DataFrame, data_type: str):
 def create_flights_from_spots(df_spots: pd.DataFrame):
     """
     Create flights from spots.
-
     Args:
         df_spots (pd.DataFrame): The DataFrame containing the spots data.
-
     Returns:
         pd.DataFrame: The DataFrame containing the flights data.
-
     This function creates flights from the given spots DataFrame. It first preprocesses the spots data using the `preprocess_flights` function, then finalizes the flights data using the `finalize_flights` function. The resulting flights DataFrame is returned.
-
     The function is decorated with the `timer_func` decorator to measure the execution time.
     """
     logger.debug("Creating flights from spots...")
+    print("Creating flights from spots...")
     df_flights = preprocess_flights(df_spots)
     df_flights = finalize_flights(df_flights, data_type="flight")
+    df_flights = fu.check_alcohol_kansspelen(df_flights)
+
     return df_flights
 
 
@@ -153,29 +157,27 @@ def create_mocks_from_flights(df_flights: pd.DataFrame, df_spots: pd.DataFrame):
 
     return mock_campaigns_df
 
-
 if __name__ == "__main__":
     CREATE_MOCKS = False
     table_name = "tv.flights_ster"
 
     try:
         # Read spots and create flights from spots
-        df_spots = db_utils.query_to_df("SELECT * FROM [dbo].[tv.spots_ster]")
+        df_spots = db_utils.query_to_df("""
+            SELECT *
+            FROM [dbo].[tv.spots_ster]
+            WHERE date >= DATEADD(MONTH, -4, GETDATE())
+            """)
         df_flights = create_flights_from_spots(df_spots)
 
         # Fetch existing flights from databes and delete double entries from new calculated flights df_flights
-        existing_flights = db_utils.query_to_df(
-            "SELECT flight_id, campaign_duration, start_date FROM [dbo].[tv.flights_ster] where mock_campaign = 0"
-        )
+        existing_flights = db_utils.query_to_df("SELECT flight_id, campaign_duration, start_date FROM [dbo].[tv.flights_ster] where mock_campaign = 0")
         merged = df_flights.merge(
             existing_flights,
             on=["flight_id", "campaign_duration", "start_date"],
             how="left",
-            indicator=True,
-        )
-        df_flights_filtered = merged[merged["_merge"] == "left_only"].drop(
-            columns=["_merge"]
-        )
+            indicator=True)
+        df_flights_filtered = merged[merged["_merge"] == "left_only"].drop(columns=["_merge"])
 
         # Log and process filtered flights
         logger.debug("Processing and updating filtered flights...")
@@ -183,11 +185,9 @@ if __name__ == "__main__":
             # Delete old flights and dump new flights
             logger.debug("Dump flights in database...")
             db_utils.delete_flights(
-                df_flights_filtered["flight_id"].tolist(), table_name=table_name
-            )
+                df_flights_filtered["flight_id"].tolist(), table_name=table_name)
             db_utils.dump_to_sql(
-                df_flights_filtered, table_name=table_name, if_exists="append"
-            )
+                df_flights_filtered, table_name=table_name, if_exists="append")
         else:
             logger.debug("No new flights to process..")
 
@@ -197,18 +197,19 @@ if __name__ == "__main__":
     try:
         # Delete flights from bereik table where campaign duration doesn’t match with the new updated flights
         flights_to_delete = db_utils.query_to_df(
-            Queries.delete_bereik_flights_which_dont_match()
-        )
+            Queries.delete_bereik_flights_which_dont_match())
         if not flights_to_delete.empty:
             db_utils.delete_flights(
-                flights_to_delete["flight_id"].tolist(), table_name="tv.bereik_ster"
-            )
+                flights_to_delete["flight_id"].tolist(), table_name="tv.bereik_ster")
 
     except Exception as e:
         logger.error(f"Failed to delete flights from bereik table: {e}")
 
     if CREATE_MOCKS:
         # Create mocks from flights
+
+        df_flights = df_flights[df_flights['start_date'] > date(2023, 9, 1)]
+
         df_mocks = create_mocks_from_flights(df_flights, df_spots)
         # Check existing primary keys
         df_mocks_to_insert = db_utils.check_existing_primary_keys(df_mocks, table_name, 'flight_id')

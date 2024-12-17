@@ -1,14 +1,15 @@
 import src.utils.api_utils as api_utils
-from src.utils.logger import setup_logger, log_warning_to_excel
+from src.utils.logger import setup_logger
 import src.utils.dictionaries as mydict
 
 import ast
 import pandas as pd
 import numpy as np
+import logging
 
 pd.set_option("display.max_columns", None)
 
-logger = logging.getLogger("bereik_utils.py")
+logger = logging.getLogger("MyLogger")
 
 def get_bereik(index, row, token: str):
     """
@@ -33,8 +34,8 @@ def get_bereik(index, row, token: str):
         target_groups, start_date, end_date, token, advertiser, product
     )
     if df.empty is True:
-        # logger.warning(f"Skipping row due to df being empty, for flight {flight_id}, advertiser {advertiser}, product {product}, start_date {start_date}, end_date {end_date}")
-        log_warning_to_excel(flight_id, advertiser, product, start_date, end_date)
+        logger.warning(f"Skipping row due to df being empty, for flight {flight_id}, advertiser {advertiser}, product {product}, start_date {start_date}, end_date {end_date}")
+        # log_warning_to_excel(flight_id, advertiser, product, start_date, end_date)
         return pd.DataFrame()
 
     df.rename(columns={0: "advertiser", 1: "product", 2: "daypart"}, inplace=True)

@@ -5,9 +5,9 @@ import pandas as pd
 from sqlalchemy import text
 import logging
 
-logger = logging.getLogger("database_utils.py")
+logger = logging.getLogger("MyLogger")
 
-@timer_func
+
 def dump_to_sql(
     df,
     table_name,

@@ -16,9 +16,10 @@ from datetime import datetime, timedelta
 import pandas as pd
 from tqdm import tqdm
 from dotenv import load_dotenv
+import logging
 
 # Setup logger
-logger = setup_logger(script_name="collect_spots.py", console_logging=True)
+logger = setup_logger()
 
 
 def parse_arguments():

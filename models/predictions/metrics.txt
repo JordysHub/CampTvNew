@@ -1,0 +1,32 @@
+## 68+ lgb
+
+Test Metrics:
+Mean Absolute Error (MAE): 7.3467
+Mean Squared Error (MSE): 73.8269
+Root Mean Squared Error (RMSE): 8.5923
+R-squared (R2): 0.7990
+
+## 68+ cat
+
+Test Set Metrics:
+MAE: 3.8026
+MSE: 23.6374
+RMSE: 4.8618
+R²: 0.9356
+
+
+## 25-39 lgb
+
+Test Set Metrics:
+  MAE: 2.4743
+  MSE: 10.3303
+  RMSE: 3.2141
+  R²: 0.8032
+
+## 25-39 cat
+
+  Test Set Metrics:
+  MAE: 1.7064
+  MSE: 5.2432
+  RMSE: 2.2898
+  R²: 0.9001

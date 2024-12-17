@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import logging
 # import logging_config  # Ensure configuration is loaded
 
-logger = logging.getLogger("api_utils.py")
+logger = logging.getLogger("MyLogger")
 load_dotenv()
 
 def get_api_token() -> str:

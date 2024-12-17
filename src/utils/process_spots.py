@@ -6,7 +6,7 @@ import pandas as pd
 import ast
 import logging
 
-logger = logging.getLogger("process_utils.py")
+logger = logging.getLogger("MyLogger")
 
 def determine_ids(df: pd.DataFrame) -> pd.DataFrame:
     """

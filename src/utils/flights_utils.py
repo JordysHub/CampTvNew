@@ -11,7 +11,8 @@ import logging
 
 import src.utils.database_utils as db_utils
 
-logger = logging.getLogger("flights_utils.py")
+logger = logging.getLogger("MyLogger")
+
 
 def flights_segment_campaigns_by_new_start(df: pd.DataFrame) -> pd.DataFrame:
     df = df[
@@ -262,10 +263,10 @@ def check_alcohol_kansspelen(df_flights):
         for index, flight in flights.iterrows():
             # Filter spots for the current flight's advertiser, product, and date range
             flight_spots = spots[
-                (spots['advertiser'] == flight['advertiser']) &
-                (spots['product'] == flight['product']) &
-                (spots['date'] >= flight['start_date']) &
-                (spots['date'] <= flight['end_date'])
+                (spots['advertiser'] == flight['advertiser'])
+                & (spots['product'] == flight['product'])
+                & (spots['date'] >= flight['start_date'])
+                & (spots['date'] <= flight['end_date'])
             ]
 
             # Check if all rows for alcohol_kansspelen are True (1)
@@ -283,8 +284,8 @@ def check_alcohol_kansspelen(df_flights):
 
 def create_mock_campaigns(
     df_flights,
-    min_days_gap=4,
-    max_mock_duration_ratio=0.9,
+    min_days_gap=5,
+    max_mock_duration_ratio=0.8,
     max_allowed_overlap=0.8,
     max_mock_campaigns=10,
     max_attempts=50,

@@ -15,9 +15,10 @@ import pandas as pd
 import time
 from tqdm import tqdm
 import argparse
+import logging
 
 # Setup logger
-logger = setup_logger(script_name="collect_bereik_ster.py", console_logging=True)
+logger = setup_logger()
 
 
 def parse_arguments():
@@ -75,29 +76,18 @@ def get_bereik(df_missing_flights):
 def process_missing_flights(tgs):
     """Retrieve and process missing flights based on target groups."""
     # Get all missing flights for every target group
-    df_missing_flights = db_utils.query_to_df(
-        Queries.get_missing_flights_per_target_group(tgs)
-    )
+    logger.info("Get missing flights for target groups...")
+    df_missing_flights = db_utils.query_to_df(Queries.get_missing_flights_per_target_group(tgs))
 
     if len(df_missing_flights) != 0:
-        logger.debug(
-            f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups..."
-        )
-
+        logger.info(f"Retrieving {len(df_missing_flights)} missing flights for {len(target_groups)} target groups...")
         # Process dates and target groups
-        df_missing_flights["start_date"] = pd.to_datetime(
-            df_missing_flights["start_date"]
-        ).dt.strftime("%d%m%y")
-        df_missing_flights["end_date"] = pd.to_datetime(
-            df_missing_flights["end_date"]
-        ).dt.strftime("%d%m%y")
-        df_missing_flights["missing_target_groups"] = df_missing_flights[
-            "missing_target_groups"
-        ].apply(bereik_utils.rename_groups)
-
+        df_missing_flights["start_date"] = pd.to_datetime(df_missing_flights["start_date"]).dt.strftime("%d%m%y")
+        df_missing_flights["end_date"] = pd.to_datetime(df_missing_flights["end_date"]).dt.strftime("%d%m%y")
+        df_missing_flights["missing_target_groups"] = df_missing_flights["missing_target_groups"].apply(bereik_utils.rename_groups)
         get_bereik(df_missing_flights)
     else:
-        logger.debug("No missing flights found.")
+        logger.info("No missing flights found.")
 
 
 if __name__ == "__main__":

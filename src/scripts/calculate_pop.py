@@ -7,11 +7,12 @@ import src.utils.api_utils as api_utils
 import src.utils.dictionaries as mydict
 from src.utils.logger import setup_logger
 import src.utils.database_utils as db_utils
+import logging
 
 import pandas as pd
 
 # setup logger
-logger = setup_logger(script_name="calculate_pop.py", console_logging=True)
+logger = setup_logger()
 
 def calculate_pop(df):
     df.iloc[:, 1:] = df.iloc[:, 1:].apply(
