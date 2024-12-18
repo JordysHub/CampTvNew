@@ -1,0 +1,160 @@
+{
+    "25-67": {
+        "lgbm": {
+            "2024-12-18": {
+                "metrics": {
+                    "train": {
+                        "mae": 2.71,
+                        "mse": 13.05,
+                        "rmse": 3.61,
+                        "r2": 0.95
+                    },
+                    "test": {
+                        "mae": 2.89,
+                        "mse": 16.49,
+                        "rmse": 4.06,
+                        "r2": 0.92
+                    }
+                },
+                "best_params": {
+                    "subsample": 0.8,
+                    "reg_lambda": 1.5,
+                    "reg_alpha": 2.0,
+                    "objective": "regression",
+                    "num_leaves": 50,
+                    "n_estimators": 200,
+                    "min_child_weight": 0.01,
+                    "min_child_samples": 20,
+                    "max_depth": -1,
+                    "learning_rate": 0.05,
+                    "colsample_bytree": 0.8,
+                    "boosting_type": "goss"
+                }
+            }
+        },
+        "xgb": {
+            "2024-12-18": {
+                "metrics": {
+                    "train": {
+                        "mae": 2.58,
+                        "mse": 12.03,
+                        "rmse": 3.47,
+                        "r2": 0.95
+                    },
+                    "test": {
+                        "mae": 2.87,
+                        "mse": 16.35,
+                        "rmse": 4.04,
+                        "r2": 0.92
+                    }
+                },
+                "best_params": {
+                    "tree_method": "hist",
+                    "subsample": 0.6,
+                    "scale_pos_weight": 1,
+                    "reg_lambda": 2.5,
+                    "reg_alpha": 0.3,
+                    "objective": "reg:squarederror",
+                    "n_estimators": 600,
+                    "min_child_weight": 8,
+                    "max_depth": 6,
+                    "learning_rate": 0.04,
+                    "gamma": 0.1,
+                    "colsample_bytree": 0.6,
+                    "early_stopping_rounds": 100
+                }
+            }
+        },
+        "cat": {
+            "2024-12-18": {
+                "metrics": {
+                    "train": {
+                        "mae": 2.81,
+                        "mse": 14.13,
+                        "rmse": 3.76,
+                        "r2": 0.95
+                    },
+                    "test": {
+                        "mae": 2.86,
+                        "mse": 16.76,
+                        "rmse": 4.09,
+                        "r2": 0.92
+                    }
+                },
+                "best_params": {
+                    "learning_rate": 0.01,
+                    "l2_leaf_reg": 5,
+                    "iterations": 1500,
+                    "depth": 8
+                }
+            }
+        }
+    },
+    "68+": {
+        "lgbm": {
+            "2024-12-18": {
+                "metrics": {
+                    "train": {
+                        "mae": 3.21,
+                        "mse": 18.07,
+                        "rmse": 4.25,
+                        "r2": 0.97
+                    },
+                    "test": {
+                        "mae": 3.96,
+                        "mse": 28.05,
+                        "rmse": 5.3,
+                        "r2": 0.94
+                    }
+                },
+                "best_params": {
+                    "subsample": 0.8,
+                    "reg_lambda": 0.0,
+                    "reg_alpha": 1.5,
+                    "objective": "regression",
+                    "num_leaves": 70,
+                    "n_estimators": 300,
+                    "min_child_weight": 1.0,
+                    "min_child_samples": 20,
+                    "max_depth": 12,
+                    "learning_rate": 0.05,
+                    "colsample_bytree": 1.0,
+                    "boosting_type": "goss"
+                }
+            }
+        },
+        "xgb": {
+            "2024-12-18": {
+                "metrics": {
+                    "train": {
+                        "mae": 3.47,
+                        "mse": 21.02,
+                        "rmse": 4.58,
+                        "r2": 0.96
+                    },
+                    "test": {
+                        "mae": 3.97,
+                        "mse": 27.59,
+                        "rmse": 5.25,
+                        "r2": 0.94
+                    }
+                },
+                "best_params": {
+                    "tree_method": "hist",
+                    "subsample": 0.8,
+                    "scale_pos_weight": 1,
+                    "reg_lambda": 1.5,
+                    "reg_alpha": 0.3,
+                    "objective": "reg:squarederror",
+                    "n_estimators": 1000,
+                    "min_child_weight": 3,
+                    "max_depth": 6,
+                    "learning_rate": 0.03,
+                    "gamma": 0.2,
+                    "colsample_bytree": 0.7,
+                    "early_stopping_rounds": 100
+                }
+            }
+        }
+    }
+}
