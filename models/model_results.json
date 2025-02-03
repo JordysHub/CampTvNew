@@ -271,5 +271,96 @@
                 }
             }
         }
+    },
+    "50+": {
+        "lgbm": {
+            "2024-12-19": {
+                "metrics": {
+                    "train": {
+                        "mae": 3.26,
+                        "mse": 18.41,
+                        "rmse": 4.29,
+                        "r2": 0.96
+                    },
+                    "test": {
+                        "mae": 3.59,
+                        "mse": 24.2,
+                        "rmse": 4.92,
+                        "r2": 0.93
+                    }
+                },
+                "best_params": {
+                    "subsample": 0.8,
+                    "reg_lambda": 0.0,
+                    "reg_alpha": 1.5,
+                    "objective": "regression",
+                    "num_leaves": 70,
+                    "n_estimators": 300,
+                    "min_child_weight": 1.0,
+                    "min_child_samples": 20,
+                    "max_depth": 12,
+                    "learning_rate": 0.05,
+                    "colsample_bytree": 1.0,
+                    "boosting_type": "goss"
+                }
+            }
+        },
+        "xgb": {
+            "2024-12-19": {
+                "metrics": {
+                    "train": {
+                        "mae": 3.31,
+                        "mse": 18.95,
+                        "rmse": 4.35,
+                        "r2": 0.96
+                    },
+                    "test": {
+                        "mae": 3.63,
+                        "mse": 24.53,
+                        "rmse": 4.95,
+                        "r2": 0.93
+                    }
+                },
+                "best_params": {
+                    "tree_method": "hist",
+                    "subsample": 0.8,
+                    "scale_pos_weight": 1,
+                    "reg_lambda": 1.5,
+                    "reg_alpha": 0.3,
+                    "objective": "reg:squarederror",
+                    "n_estimators": 1000,
+                    "min_child_weight": 3,
+                    "max_depth": 6,
+                    "learning_rate": 0.03,
+                    "gamma": 0.2,
+                    "colsample_bytree": 0.7,
+                    "early_stopping_rounds": 100
+                }
+            }
+        },
+        "cat": {
+            "2024-12-19": {
+                "metrics": {
+                    "train": {
+                        "mae": 3.29,
+                        "mse": 18.92,
+                        "rmse": 4.35,
+                        "r2": 0.96
+                    },
+                    "test": {
+                        "mae": 3.55,
+                        "mse": 23.82,
+                        "rmse": 4.88,
+                        "r2": 0.93
+                    }
+                },
+                "best_params": {
+                    "learning_rate": 0.01,
+                    "l2_leaf_reg": 5,
+                    "iterations": 3000,
+                    "depth": 8
+                }
+            }
+        }
     }
 }
