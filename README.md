@@ -7,15 +7,17 @@ The project aims to forecast the 1+ reach for Ster campaigns with a ML model by 
 └── CAMP_TV_NEW/
     ├── data/
     │   └── interim/
-    │       ├── all_spots_ster.xlsx      # contains all spots per hour, which makes calculation alcohol/kansspel easier
     │       └── warnings.xlsx            # Some flights mismatch in Edge, causing the API to return an error. I store and remove these flights to prevent issues in the future.
+    ├── models/
+    │   ├── model_results.json           # stores all the training results
+    │   ├── model_summary.ipynb          # creates a readable cell from the model results
+    │   ├── trainer_class.ipynb          # contains the classes to train the models with
+    │   ├── 
     ├── notebooks/
-    │   ├── predictions                  # stores prediction files
-    │   ├── visualizations/
-    │   │   └── visualize.ipynb
-    │   ├── clustering.ipynb
+    │   └── calculate_corrections.ipynb   # used for correcting the old models
+    │   ├── clustering.ipynb              # used for making clustering predictions to see if models can predict multiple target groups
     │   ├── data_overview.ipynb           # gives and overview of what data is stored in the database per target group
-    │   └── model_trainer_class.ipynb     # The notebook used for training the models
+    │   ├── update_alcolhol.ipynb         # due to some mistake, the feature 'alcohol' didnt work. This corrects the data in the database
     ├── src/
     │   ├── scripts/
     │   │   ├── calculate_pop.py           # Caluclates and updates the target group population in the database
